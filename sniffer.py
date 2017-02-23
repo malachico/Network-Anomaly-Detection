@@ -7,6 +7,7 @@ import time
 
 import dpkt
 
+import dal
 import kpi_extractor
 
 g_packets_count = 0
@@ -81,7 +82,7 @@ if __name__ == '__main__':
     clean_db = False if args['clean_db'] == "no" else True
 
     # Init DB
-    # dal.init_db(clean_db)
+    dal.init_db()
 
     # Init settings
     # common.init_settings()

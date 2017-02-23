@@ -66,7 +66,7 @@ def parse_packet(timestamp, packet):
                     }
 
     # If we first time see this destination IP, add new list with the s to hash and return
-    if dal.is_session_exists(https_packet['dest_ip']):
+    if dal.is_session_exists(https_packet):
         dal.upsert_session(https_packet)
         return
 
