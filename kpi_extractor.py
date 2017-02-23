@@ -78,6 +78,6 @@ def parse_packet(timestamp, packet):
         dal.upsert_session(https_packet)
         return
 
-    dal.update_session_bytes(https_packet['n_bytes'])
+    dal.update_session_bytes(https_packet, packet_bytes_len)
 
-    dal.update_session_timestamp(https_packet['timestamp'])
+    dal.update_session_timestamp(https_packet)
