@@ -9,8 +9,10 @@ import dpkt
 
 import dal
 import kpi_extractor
+from states.StateContext import StateContext
 
 g_packets_count = 0
+context = StateContext()
 
 
 def signal_handler():
