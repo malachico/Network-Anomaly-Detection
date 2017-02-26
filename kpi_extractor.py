@@ -65,19 +65,15 @@ def parse_packet(timestamp, packet):
                     'start_time': timestamp
                     }
 
-    # If we first time see this destination IP, add new list with the s to hash and return
-    if dal.is_session_exists(https_packet):
-        dal.upsert_session(https_packet)
-        return
-
-    # Else, clear all old sessions (timestamp is the time of the current packet)
+    # Clear all old sessions (timestamp is the time of the current packet)
     dal.remove_old_sessions(https_packet['timestamp'])
 
-    # Add session if not found yet in the list
+    # If session is not found yet in the DB, upsert and return
     if not dal.is_session_exists(https_packet):
         dal.upsert_session(https_packet)
         return
 
+    # If session is already exist, update bytes and timestamp
     dal.update_session_bytes(https_packet, packet_bytes_len)
 
     dal.update_session_timestamp(https_packet)

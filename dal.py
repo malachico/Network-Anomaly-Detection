@@ -26,7 +26,7 @@ def init_db():
 
 
 def is_session_exists(session):
-    return g_db['sessions'].find(get_session_id(session)) is not None
+    return g_db['sessions'].find_one(get_session_id(session)) is not None
 
 
 def upsert_session(session):
