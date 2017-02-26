@@ -1,46 +1,9 @@
-import socket
 from collections import deque
 
-import dpkt
-from IPy import IP
+from states.GatheringState import GatheringState
 
 import common
 from State import State
-from states.GatheringState import GatheringState
-
-
-def ingoing_traffic(ip_frame):
-    """
-    Check it the traffic is from outside the net to inside
-
-    :param ip_frame: frame to
-    :return: True if the communication is from outside to internal network
-    """
-    src_ip = socket.inet_ntoa(ip_frame.src)
-    dest_ip = socket.inet_ntoa(ip_frame.dst)
-
-    src_ip_type = IP(src_ip).iptype()
-    dest_ip_type = IP(dest_ip).iptype()
-
-    return src_ip_type == 'PUBLIC' and dest_ip_type == 'PRIVATE'
-
-
-def filter_ingoing_ip_traffic(packet):
-    # Parse the input
-    eth_frame = dpkt.ethernet.Ethernet(packet)
-
-    # Check if IP
-    if eth_frame.type != dpkt.ethernet.ETH_TYPE_IP:
-        return
-
-    # If not IP return
-    ip_frame = eth_frame.data
-
-    # If the traffic is not incoming traffic - return
-    if not ingoing_traffic(ip_frame):
-        return
-
-    return ip_frame
 
 
 class ParameterizingState(State):
@@ -54,7 +17,7 @@ class ParameterizingState(State):
         if not common.start_time:
             common.start_time = timestamp
 
-        ip_frame = filter_ingoing_ip_traffic(packet)
+        ip_frame = common.filter_ingoing_ip_traffic(packet)
 
         if not ip_frame:
             return

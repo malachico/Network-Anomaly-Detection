@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+import common
 
 g_db = None
 SESSION_TIME = 7 * 60
@@ -54,3 +55,19 @@ def update_session_bytes(session, n_bytes):
 
 def update_session_timestamp(session):
     g_db["sessions"].update(get_session_id(session), {"$set": {'timestamp': session['timestamp']}})
+
+
+def append_batches_count(n_packets_in_batch):
+    g_db.batches.update({"batches_count": {"$exists": True}},
+                           {'$push':
+                               {"batches_count": {
+                                   '$each': [n_packets_in_batch],
+                                   '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
+
+
+def append_batches_rate(batch_rate):
+    g_db.batches.update({"batches_rates": {"$exists": True}},
+                           {'$push':
+                               {"batches_rates": {
+                                   '$each': [batch_rate],
+                                   '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)

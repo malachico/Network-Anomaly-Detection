@@ -8,8 +8,7 @@ import time
 import dpkt
 
 import dal
-import kpi_extractor
-from states.StateContext import StateContext
+from StateContext import StateContext
 
 g_packets_count = 0
 context = StateContext()
@@ -35,7 +34,7 @@ def read_pcap(file_to_read):
     packets_list = [(ts, packet) for ts, packet in pcap_reader]
 
     # Process all packets in list
-    map(lambda ts_packet: kpi_extractor.parse_packet(ts_packet[0], ts_packet[1]), packets_list)
+    map(lambda ts_packet: context.current_state.process_packet(ts_packet[0], ts_packet[1]), packets_list)
 
 
 def count_packet():
@@ -65,7 +64,7 @@ def start_sniffing(interface_to_sniff):
             continue
 
         # Process packet
-        kpi_extractor.parse_packet(time.time(), packet)
+        context.current_state.process_packet(time.time(), packet)
 
 
 if __name__ == '__main__':
@@ -85,12 +84,6 @@ if __name__ == '__main__':
 
     # Init DB
     dal.init_db()
-
-    # Init settings
-    # common.init_settings()
-
-    # Restore elements in DB
-    # dal.restore_db()
 
     # get mode : pcap file reader or sniffing
     mode = sys.argv[1]
