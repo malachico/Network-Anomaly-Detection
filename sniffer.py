@@ -8,7 +8,7 @@ import time
 import dpkt
 
 import dal
-from StateContext import StateContext
+from states.StateContext import StateContext
 
 g_packets_count = 0
 context = StateContext()

@@ -54,7 +54,8 @@ def handle_sessions(timestamp, packet):
                     'protocol': dpkt.ip.IP_PROTO_TCP,
                     'n_bytes': packet_bytes_len,
                     'timestamp': timestamp,
-                    'start_time': timestamp
+                    'start_time': timestamp,
+                    'duration': 0
                     }
 
     # Clear all old sessions (timestamp is the time of the current packet)
@@ -69,3 +70,4 @@ def handle_sessions(timestamp, packet):
     dal.update_session_bytes(https_packet, packet_bytes_len)
 
     dal.update_session_timestamp(https_packet)
+    dal.update_session_duration(https_packet)

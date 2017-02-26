@@ -4,9 +4,9 @@ interface for state
 
 
 class State:
-
+    name = ""
     def __init__(self):
-        self.name = None
+        print "starting state", State.name
 
     def process_packet(self, timestamp, packet):
         raise NotImplementedError("process_packet : NotImplementedError")

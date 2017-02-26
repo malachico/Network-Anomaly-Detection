@@ -6,6 +6,7 @@ import common
 import dal
 from State import State
 import sessions_extractor
+from states.DetectingState import DetectingState
 
 
 def calc_batch_rate_std():
@@ -44,9 +45,9 @@ class GatheringState(State):
     """
 
     def __init__(self, context):
+        State.name = "Gathering State"
         State.__init__(self)
         self.context = context
-        self.name = "Gathering State"
 
     def process_packet(self, timestamp, packet):
         ip_frame = common.filter_ingoing_ip_traffic(packet)
@@ -73,6 +74,9 @@ class GatheringState(State):
 
         # Init start time to current timestamp
         common.start_time += common.BATCH_PERIOD
+
+        if self.check_if_move_to_next_state(timestamp):
+            self.context.current_state = DetectingState(self.context)
 
     def check_if_move_to_next_state(self, timestamp):
         return

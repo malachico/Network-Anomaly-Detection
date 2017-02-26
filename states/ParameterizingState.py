@@ -8,10 +8,10 @@ from State import State
 
 class ParameterizingState(State):
     def __init__(self, context):
+        State.name = "Parameterizing State"
         State.__init__(self)
         self.context = context
         self.packets_counter = 0
-        self.name = "Parameterizing State"
 
     def process_packet(self, timestamp, packet):
         if not common.start_time:

@@ -1,9 +1,9 @@
-from State import State
+from states.State import State
 
 
 class DetectingState(State):
     def __init__(self, context):
-        State.name = "Detecting State"
+        State.name = "Modeling State"
         State.__init__(self)
         self.context = context
 
