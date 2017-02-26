@@ -28,7 +28,7 @@ class ParameterizingState(State):
             # Time parameterizing ended. parameterize.
 
             # Average time for 10000 packets to arrive
-            common.BATCH_PERIOD = common.TIME_TO_PARAMETERIZE / (self.packets_counter / 10000)
+            common.BATCH_PERIOD = common.TIME_TO_PARAMETERIZE / (self.packets_counter / 10000.0)
 
             common.PERIODS_IN_HOUR = 60 * 60 / common.BATCH_PERIOD
 
