@@ -8,7 +8,9 @@ from collections import defaultdict
 import dal
 import sessions_extractor
 
-start_time = None
+packets_counter = 0
+
+batch_start_time = None
 
 # Batch of the current period
 current_batch = None
@@ -28,7 +30,7 @@ PERIODS_IN_HOUR = None
 PERIODS_IN_DAY = None
 
 # Number of required batches before checking the traffic
-TIME_TO_PARAMETERIZE = 1# 24 * 60 * 60  # 1 Day
+TIME_TO_PARAMETERIZE = 1  # 24 * 60 * 60  # 1 Day
 
 GATHERING_TIME = 24 * 60 * 60 * 14  # 2 weeks
 
@@ -39,39 +41,66 @@ DAYS_REMEMBER = 30
 NUMBER_OF_BATCHES_TO_REMEMBER = None
 
 
-def ingoing_traffic(ip_frame):
-    """
-    Check it the traffic is from outside the net to inside
 
-    :param ip_frame: frame to
-    :return: True if the communication is from outside to internal network
-    """
+def internal_traffic(ip_frame):
     src_ip = socket.inet_ntoa(ip_frame.src)
     dest_ip = socket.inet_ntoa(ip_frame.dst)
 
-    src_ip_type = IP(src_ip).iptype()
-    dest_ip_type = IP(dest_ip).iptype()
-
-    return src_ip_type == 'PUBLIC' and dest_ip_type == 'PRIVATE'
+    return IP(src_ip).iptype() == IP(dest_ip).iptype()
 
 
-def filter_ingoing_ip_traffic(packet):
+def filter_packet(packet):
     # Parse the input
     eth_frame = dpkt.ethernet.Ethernet(packet)
 
     # Check if IP
     if eth_frame.type != dpkt.ethernet.ETH_TYPE_IP:
-        return
+        return False
 
     # If not IP return
     ip_frame = eth_frame.data
 
     # If the traffic is not incoming traffic - return
-    if not ingoing_traffic(ip_frame):
-        return
+    if internal_traffic(ip_frame):
+        return False
 
-    return ip_frame
+    return True
 
+
+def count_packet():
+    global packets_counter
+    packets_counter += 1
+
+
+def parameterize(duration):
+    global BATCH_PERIOD, PERIODS_IN_HOUR, PERIODS_IN_DAY, NUMBER_OF_BATCHES_TO_REMEMBER, packets_counter
+
+    # Average time for 10000 packets to arrive
+    BATCH_PERIOD = duration / (packets_counter / 10000.0)
+
+    PERIODS_IN_HOUR = 60 * 60 / BATCH_PERIOD
+
+    PERIODS_IN_DAY = 24 * PERIODS_IN_HOUR
+
+    NUMBER_OF_BATCHES_TO_REMEMBER = int(PERIODS_IN_DAY * DAYS_REMEMBER)
+
+    packets_counter = 0
+
+
+def add_packet_to_batch(timestamp, packet):
+    global current_batch
+    current_batch.append((timestamp, packet))
+
+
+def batch_time_over(timestamp):
+    return timestamp - batch_start_time > BATCH_PERIOD
+
+
+def reset_batch():
+    global current_batch, batch_start_time
+
+    current_batch = []
+    batch_start_time += BATCH_PERIOD
 
 def calc_ioratio():
     global current_batch
@@ -94,78 +123,7 @@ def calc_ioratio():
     if outgoing == 0:
         return 0
 
-    return ingoing/float(outgoing)
-
-
-def handle_batch():
-    """
-    Parse sessions,
-    Extract KPI's,
-    Insert collected KPI's to kpi collection in DB
-    KPI's:
-    * number of packets
-    * rate variance in batch
-    * ingoing/outgoing packets ratio
-    * session duration
-    * session bandwidth
-
-    :return:
-    """
-    global current_batch, start_time, BATCH_PERIOD
-
-    # Sessions
-    map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
-
-    # Num of packets
-
-    n_packets_in_batch = len(current_batch)
-
-    # Rate STD
-    current_rate = calc_batch_rate_std()
-
-    # Ingoing - outgoing ration
-    io_ratio = calc_ioratio()
-
-    # Sessions duration
-
-    # Sessions bandwidth
-
-
-    # add to DB rate, ratio and num of packets
-    dal.append_batches_count(n_packets_in_batch)
-
-    dal.append_batches_rate(current_rate)
-
-    dal.append_batches_ratio(io_ratio)
-
-
-
-    # Init new batch
-    current_batch = []
-
-    # Init start time to current timestamp
-    start_time += BATCH_PERIOD
-
-
-def handle_packet(timestamp, packet):
-    global current_batch, start_time
-    ip_frame = filter_ingoing_ip_traffic(packet)
-
-    if not ip_frame:
-        return
-
-    # If current batch is not initialized, init and exit
-    if current_batch is None:
-        current_batch = []
-        start_time = timestamp
-
-    current_batch.append((timestamp, ip_frame))
-
-    # Else, check if time for new batch
-    if start_time + BATCH_PERIOD > timestamp:
-        return
-
-    handle_batch()
+    return ingoing / float(outgoing)
 
 
 def calc_batch_rate_std():
@@ -181,3 +139,42 @@ def calc_batch_rate_std():
         packets_per_sec[ts_pckt[0]] += 1
 
     return numpy.var(packets_per_sec.values())
+
+
+
+def extract_kpis():
+    """
+    Parse sessions,
+    Extract KPI's,
+    Insert collected KPI's to kpi collection in DB
+
+    KPI's:
+    * number of packets
+    * rate variance in batch
+    * ingoing/outgoing packets ratio
+    * session duration
+    * session bandwidth
+
+    :return:
+    """
+    global current_batch, batch_start_time, BATCH_PERIOD
+
+    # Sessions
+    map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
+
+    # Num of packets
+    dal.append_batches_count(len(current_batch))
+
+    # Rate STD
+    dal.append_batches_rate(calc_batch_rate_std())
+
+    # Ingoing - outgoing ration
+    dal.append_batches_ratio(calc_ioratio())
+
+    # Sessions duration and bandwidth
+    dal.remove_old_sessions(batch_start_time + BATCH_PERIOD)
+
+
+def build_model():
+    # TODO
+    return None

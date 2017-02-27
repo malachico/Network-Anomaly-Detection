@@ -61,5 +61,3 @@ def handle_sessions(timestamp, ip_frame):
     dal.update_session_bytes(https_packet, packet_bytes_len)
 
     dal.update_session_timestamp(https_packet)
-
-    dal.update_session_duration(https_packet)

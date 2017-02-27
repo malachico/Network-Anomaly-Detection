@@ -2,7 +2,7 @@ from pymongo import MongoClient
 import common
 
 g_db = None
-SESSION_TIME = 7 * 60
+ENDED_SESSION_TIME = 3 * 60
 
 
 def get_session_id(session):
@@ -46,7 +46,15 @@ def remove_old_sessions(timestamp):
     :type timestamp: time now
     :return:
     """
-    g_db["sessions"].remove({"timestamp": {"$lt": timestamp - SESSION_TIME}}, multi=True)
+    ended_sessions = list(g_db["sessions"].find({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}))
+
+    durations = map(lambda session: session['timestamp'] - session['start_time'], ended_sessions)
+    bandwidths = map(lambda session: session['n_bytes'], ended_sessions)
+
+    append_bandwidths(bandwidths)
+    append_durations(durations)
+
+    g_db["sessions"].remove({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}, multi=True)
 
 
 def update_session_bytes(session, n_bytes):
@@ -83,4 +91,20 @@ def append_batches_ratio(io_ratio):
                     {'$push':
                         {"batches_ratios": {
                             '$each': [io_ratio],
+                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
+
+
+def append_durations(durations):
+    g_db.kpi.update({"sessions_durations": {"$exists": True}},
+                    {'$push':
+                        {"sessions_durations": {
+                            '$each': durations,
+                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
+
+
+def append_bandwidths(bandwidths):
+    g_db.kpi.update({"sessions_bandwidths": {"$exists": True}},
+                    {'$push':
+                        {"sessions_bandwidths": {
+                            '$each': bandwidths,
                             '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
