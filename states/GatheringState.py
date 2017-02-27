@@ -14,24 +14,8 @@ class GatheringState(State):
         self.context = context
 
     def process_packet(self, timestamp, packet):
-        ip_frame = common.filter_ingoing_ip_traffic(packet)
-
-        if not ip_frame:
-            return
-
-        # If current batch is not initialized, init and exit
-        if common.current_batch is None:
-            common.current_batch = []
-            common.start_time = timestamp
-
-        common.current_batch.append((timestamp, packet))
-
-        # Else, check if time for new batch
-        if common.start_time + common.BATCH_PERIOD > timestamp:
-            return
-
         # Check current_batch for anomaly
-        common.handle_batch()
+        common.handle_packet(timestamp, packet)
 
         if self.check_if_move_to_next_state(timestamp):
             self.context.current_state = ModelingState(self.context)

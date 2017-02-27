@@ -19,17 +19,8 @@ def is_internal_traffic(src_ip, dest_ip):
     return src_ip_type == dest_ip_type
 
 
-def handle_sessions(timestamp, packet):
-    # Parse the input
-    eth_frame = dpkt.ethernet.Ethernet(packet)
-    packet_bytes_len = len(eth_frame)
-
-    # If not IP return
-    if eth_frame.type != dpkt.ethernet.ETH_TYPE_IP:
-        return
-
-    ip_frame = eth_frame.data
-
+def handle_sessions(timestamp, ip_frame):
+    packet_bytes_len = len(ip_frame)
     src_ip = socket.inet_ntoa(ip_frame.src)
     dest_ip = socket.inet_ntoa(ip_frame.dst)
 

@@ -9,7 +9,6 @@ class ModelingState(State):
         self.context = context
 
     def process_packet(self, timestamp, packet):
-        # TODO : build model
 
         if self.check_if_move_to_next_state(timestamp):
             self.context.current_state = DetectingState(self.context)

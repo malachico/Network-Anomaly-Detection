@@ -34,7 +34,7 @@ class ParameterizingState(State):
 
             common.PERIODS_IN_DAY = 24 * common.PERIODS_IN_HOUR
 
-            common.NUMBER_OF_BATCHES_TO_REMEMBER = common.PERIODS_IN_DAY * common.DAYS_REMEMBER
+            common.NUMBER_OF_BATCHES_TO_REMEMBER = int(common.PERIODS_IN_DAY * common.DAYS_REMEMBER)
 
             # Set start time for next phase
             State.state_start_time = common.start_time = timestamp

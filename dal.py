@@ -58,22 +58,29 @@ def update_session_timestamp(session):
 
 
 def update_session_duration(session):
-    g_db.sessions.update(get_session_id(session), {"$set": {'duration': session['timestamp'] - session['start_time']}})
+    session_start_time = g_db.sessions.find_one(get_session_id(session))['start_time']
+    g_db.sessions.update(get_session_id(session), {"$set": {'duration': session['timestamp'] - session_start_time}})
 
 
 def append_batches_count(n_packets_in_batch):
-    g_db.batches.update({"batches_count": {"$exists": True}},
-                        {'$push':
-                            {"batches_count": {
-                                '$each': [n_packets_in_batch],
-                                '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
+    g_db.kpi.update({"batches_count": {"$exists": True}},
+                    {'$push':
+                        {"batches_count": {
+                            '$each': [n_packets_in_batch],
+                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
 
 
 def append_batches_rate(batch_rate):
-    g_db.batches.update({"batches_rates": {"$exists": True}},
-                        {'$push':
-                            {"batches_rates": {
-                                '$each': [batch_rate],
-                                '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
+    g_db.kpi.update({"batches_rates": {"$exists": True}},
+                    {'$push':
+                        {"batches_rates": {
+                            '$each': [batch_rate],
+                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
 
 
+def append_batches_ratio(io_ratio):
+    g_db.kpi.update({"batches_ratios": {"$exists": True}},
+                    {'$push':
+                        {"batches_ratios": {
+                            '$each': [io_ratio],
+                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
