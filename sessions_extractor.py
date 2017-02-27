@@ -46,7 +46,6 @@ def handle_sessions(timestamp, ip_frame):
                     'n_bytes': packet_bytes_len,
                     'timestamp': timestamp,
                     'start_time': timestamp,
-                    'duration': 0
                     }
 
     # Clear all old sessions (timestamp is the time of the current packet)

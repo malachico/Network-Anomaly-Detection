@@ -1,6 +1,6 @@
 import common
 from State import State
-from states.ModelingState import ModelingState
+from states.DetectingState import DetectingState
 
 
 class GatheringState(State):
@@ -14,12 +14,14 @@ class GatheringState(State):
         self.context = context
 
     def process_packet(self, timestamp, packet):
-        if not common.filter_packet(packet):
+        ip_frame = common.filter_packet(packet)
+
+        if not ip_frame:
             return
 
         common.count_packet()
 
-        common.add_packet_to_batch(timestamp, packet)
+        common.add_packet_to_batch(timestamp, ip_frame)
 
         if common.batch_time_over(timestamp):
             common.extract_kpis()
@@ -34,7 +36,7 @@ class GatheringState(State):
             common.build_model()
 
             # change State to Learning
-            self.context.set_state(GatheringState(self.context))
+            self.context.set_state(DetectingState(self.context))
 
     def check_if_move_to_next_state(self, timestamp):
         timestamp - State.state_start_time > common.GATHERING_TIME

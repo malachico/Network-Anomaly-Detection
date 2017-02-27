@@ -15,6 +15,7 @@ class ParameterizingState(State):
     def process_packet(self, timestamp, packet):
         if not common.batch_start_time:
             State.state_start_time = common.batch_start_time = timestamp
+            common.current_batch = []
 
         if not common.filter_packet(packet):
             return

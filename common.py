@@ -64,7 +64,7 @@ def filter_packet(packet):
     if internal_traffic(ip_frame):
         return False
 
-    return True
+    return ip_frame
 
 
 def count_packet():
