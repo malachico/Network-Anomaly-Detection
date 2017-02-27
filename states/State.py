@@ -4,7 +4,8 @@ interface for state
 
 
 class State:
-    name = ""
+    name = None
+    state_start_time = None
 
     def __init__(self):
         print "starting", State.name

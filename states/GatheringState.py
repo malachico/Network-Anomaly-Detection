@@ -1,42 +1,6 @@
-from collections import defaultdict
-
-import numpy
-
 import common
-import dal
 from State import State
-import sessions_extractor
-from states.DetectingState import DetectingState
-
-
-def calc_batch_rate_std():
-    """
-
-    :return: the std of packets per second in the current batch
-    """
-    packets_per_sec = defaultdict(int)
-
-    for ts_pckt in common.current_batch:
-        packets_per_sec[ts_pckt[0]] += 1
-
-    return numpy.var(packets_per_sec.values())
-
-
-def handle_batch():
-    # Sessions
-    map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), common.current_batch)
-
-    # Num of packets
-    # Calc rate and number of packets in current batch
-    n_packets_in_batch = len(common.current_batch)
-
-    # Rate STD
-    current_rate = calc_batch_rate_std()
-
-    # add to DB rate and num of packets
-    dal.append_batches_count(n_packets_in_batch)
-
-    dal.append_batches_rate(current_rate)
+from states.ModelingState import ModelingState
 
 
 class GatheringState(State):
@@ -67,16 +31,11 @@ class GatheringState(State):
             return
 
         # Check current_batch for anomaly
-        handle_batch()
-
-        # Init new batch
-        common.current_batch = []
-
-        # Init start time to current timestamp
-        common.start_time += common.BATCH_PERIOD
+        common.handle_batch()
 
         if self.check_if_move_to_next_state(timestamp):
-            self.context.current_state = DetectingState(self.context)
+            self.context.current_state = ModelingState(self.context)
+            State.state_start_time = timestamp
 
     def check_if_move_to_next_state(self, timestamp):
-        return
+        timestamp - State.state_start_time > common.GATHERING_TIME

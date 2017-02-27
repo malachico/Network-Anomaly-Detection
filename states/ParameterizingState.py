@@ -15,7 +15,7 @@ class ParameterizingState(State):
 
     def process_packet(self, timestamp, packet):
         if not common.start_time:
-            common.start_time = timestamp
+            State.state_start_time = common.start_time = timestamp
 
         ip_frame = common.filter_ingoing_ip_traffic(packet)
 
@@ -36,14 +36,8 @@ class ParameterizingState(State):
 
             common.NUMBER_OF_BATCHES_TO_REMEMBER = common.PERIODS_IN_DAY * common.DAYS_REMEMBER
 
-            # Fix-sized queue, holds the number of incoming packets in each batch
-            common.batches_queue = deque([], common.NUMBER_OF_BATCHES_TO_REMEMBER)
-
-            # Fix-sized queue, holds variance of rate packets in each batch
-            common.rate_queue = deque([], common.NUMBER_OF_BATCHES_TO_REMEMBER)
-
             # Set start time for next phase
-            common.start_time = timestamp
+            State.state_start_time = common.start_time = timestamp
 
             # change State to Learning
             self.context.set_state(GatheringState(self.context))
