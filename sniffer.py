@@ -14,7 +14,7 @@ g_packets_count = 0
 context = StateContext()
 
 
-def signal_handler():
+def signal_handler(signal, frame):
     print '\nCtrl+C was pressed. Exit gracefully.'
     sys.exit(0)
 
