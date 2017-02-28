@@ -39,20 +39,34 @@ def upsert_session(session):
     return g_db['sessions'].update(get_session_id(session), session, upsert=True)
 
 
-def remove_old_sessions(timestamp):
+def remove_old_sessions_and_extract_kpis(timestamp):
     """
-    remove sessions which are older than g_session_time
+    Remove sessions which are older than g_session_time and extract their KPI's
+    * number of https sessions per host, when the host is the destination IP
+    * sessions duration
+    * sessions bandwidth
 
     :type timestamp: time now
     :return:
     """
     ended_sessions = list(g_db["sessions"].find({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}))
+    all_sessions = list(g_db["sessions"].find())
 
+    # Get the duration of sessions
     durations = map(lambda session: session['timestamp'] - session['start_time'], ended_sessions)
+
+    # Get the bandwidth of sessions
     bandwidths = map(lambda session: session['n_bytes'], ended_sessions)
+
+    # for each ended session get number of session
+    ended_ips = set(map(lambda ended_session: ended_session['dest_ip'], ended_sessions))
+
+    n_sessions = map(lambda ended_ip: len(filter(lambda session: ended_ip == session['dest_ip'], all_sessions)),
+                     ended_ips)
 
     append_bandwidths(bandwidths)
     append_durations(durations)
+    append_n_sessions(n_sessions)
 
     g_db["sessions"].remove({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}, multi=True)
 
@@ -107,4 +121,12 @@ def append_bandwidths(bandwidths):
                     {'$push':
                         {"sessions_bandwidths": {
                             '$each': bandwidths,
+                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
+
+
+def append_n_sessions(n_sessions):
+    g_db.kpi.update({"n_sessions": {"$exists": True}},
+                    {'$push':
+                        {"n_sessions": {
+                            '$each': n_sessions,
                             '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)

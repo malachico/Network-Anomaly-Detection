@@ -41,7 +41,6 @@ DAYS_REMEMBER = 30
 NUMBER_OF_BATCHES_TO_REMEMBER = None
 
 
-
 def internal_traffic(ip_frame):
     src_ip = socket.inet_ntoa(ip_frame.src)
     dest_ip = socket.inet_ntoa(ip_frame.dst)
@@ -102,6 +101,7 @@ def reset_batch():
     current_batch = []
     batch_start_time += BATCH_PERIOD
 
+
 def calc_ioratio():
     global current_batch
     ingoing = 0
@@ -141,8 +141,7 @@ def calc_batch_rate_std():
     return numpy.var(packets_per_sec.values())
 
 
-
-def extract_kpis():
+def extract_kpis(timestamp):
     """
     Parse sessions,
     Extract KPI's,
@@ -160,6 +159,10 @@ def extract_kpis():
     global current_batch, batch_start_time, BATCH_PERIOD
 
     # Sessions
+    # Clear all old sessions (timestamp is the time of the current packet)
+    dal.remove_old_sessions_and_extract_kpis(timestamp)
+
+    # insert sessions to DB
     map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
 
     # Num of packets
@@ -172,7 +175,7 @@ def extract_kpis():
     dal.append_batches_ratio(calc_ioratio())
 
     # Sessions duration and bandwidth
-    dal.remove_old_sessions(batch_start_time + BATCH_PERIOD)
+    dal.remove_old_sessions_and_extract_kpis(batch_start_time + BATCH_PERIOD)
 
 
 def build_model():

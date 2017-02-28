@@ -48,9 +48,6 @@ def handle_sessions(timestamp, ip_frame):
                     'start_time': timestamp,
                     }
 
-    # Clear all old sessions (timestamp is the time of the current packet)
-    dal.remove_old_sessions(https_packet['timestamp'])
-
     # If session is not found yet in the DB, upsert and return
     if not dal.is_session_exists(https_packet):
         dal.upsert_session(https_packet)
