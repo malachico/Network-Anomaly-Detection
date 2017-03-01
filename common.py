@@ -75,7 +75,7 @@ def parameterize(duration):
     global BATCH_PERIOD, PERIODS_IN_HOUR, PERIODS_IN_DAY, NUMBER_OF_BATCHES_TO_REMEMBER, packets_counter
 
     # Average time for 10000 packets to arrive
-    BATCH_PERIOD = duration / (packets_counter / 10000.0)
+    BATCH_PERIOD = (packets_counter / duration) * 10000.0
 
     PERIODS_IN_HOUR = 60 * 60 / BATCH_PERIOD
 

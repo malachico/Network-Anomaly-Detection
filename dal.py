@@ -1,3 +1,4 @@
+import numpy
 from pymongo import MongoClient
 import common
 
@@ -50,6 +51,13 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     :return:
     """
     ended_sessions = list(g_db["sessions"].find({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}))
+
+    if not ended_sessions:
+        append_bandwidths(0)
+        append_durations(0)
+        append_n_sessions(0)
+        return
+
     all_sessions = list(g_db["sessions"].find())
 
     # Get the duration of sessions
@@ -112,7 +120,7 @@ def append_durations(durations):
     g_db.kpi.update({"sessions_durations": {"$exists": True}},
                     {'$push':
                         {"sessions_durations": {
-                            '$each': durations,
+                            '$each': [durations],
                             '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
 
 
@@ -120,7 +128,7 @@ def append_bandwidths(bandwidths):
     g_db.kpi.update({"sessions_bandwidths": {"$exists": True}},
                     {'$push':
                         {"sessions_bandwidths": {
-                            '$each': bandwidths,
+                            '$each': [bandwidths],
                             '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
 
 
@@ -128,5 +136,13 @@ def append_n_sessions(n_sessions):
     g_db.kpi.update({"n_sessions": {"$exists": True}},
                     {'$push':
                         {"n_sessions": {
-                            '$each': n_sessions,
+                            '$each': [n_sessions],
                             '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
+
+
+def get_all_kpis():
+    return list(g_db.kpi.find({}, {'_id': 0}))
+
+
+def drop_kpis():
+    g_db.kpi.drop()

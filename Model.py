@@ -1,13 +1,11 @@
-from scipy.stats import multivariate_normal
-
 import dal
-
+import numpy
 
 
 class Model:
 
     def __init__(self):
-        self.cov_matrix = None
+        self.cov_matrix = self.calc_cov_matrix()
         self.mean_vec = None
 
     def calc_model(self):
@@ -22,3 +20,8 @@ class Model:
 
     def calc_probability(self, sample):
         pass
+
+    def calc_cov_matrix(self):
+        kpis = dal.get_all_kpis()
+
+        numpy.cov

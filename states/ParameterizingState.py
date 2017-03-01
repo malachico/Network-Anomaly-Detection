@@ -1,5 +1,3 @@
-from collections import deque
-
 from states.GatheringState import GatheringState
 
 import common
