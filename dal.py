@@ -28,6 +28,20 @@ def init_db():
     g_db = client['ade']
 
 
+# ### Sessions handling ### #
+def update_session_bytes(session, n_bytes):
+    g_db["sessions"].update(get_session_id(session), {"$inc": {'n_bytes': n_bytes}})
+
+
+def update_session_timestamp(session):
+    g_db["sessions"].update(get_session_id(session), {"$set": {'timestamp': session['timestamp']}})
+
+
+def update_session_duration(session):
+    session_start_time = g_db.sessions.find_one(get_session_id(session))['start_time']
+    g_db.sessions.update(get_session_id(session), {"$set": {'duration': session['timestamp'] - session_start_time}})
+
+
 def is_session_exists(session):
     return g_db['sessions'].find_one(get_session_id(session)) is not None
 
@@ -41,6 +55,7 @@ def upsert_session(session):
     return g_db['sessions'].update(get_session_id(session), session, upsert=True)
 
 
+# ### KPI handling ### #
 def remove_old_sessions_and_extract_kpis(timestamp):
     """
     Remove sessions which are older than g_session_time and extract their KPI's
@@ -80,11 +95,11 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     ended_sessions = list(g_db["sessions"].find({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}))
 
     # filter all internal sessions
-    ended_sessions = map(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(),
-                         ended_sessions)
+    ended_sessions = filter(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(),
+                            ended_sessions)
 
     # Get the ended sessions from inside the network
-    ended_local_sessions = map(lambda s: IP(s['dest_ip']).iptype() == 'PRIVATE', ended_sessions)
+    ended_local_sessions = filter(lambda s: IP(s['dest_ip']).iptype() == 'PRIVATE', ended_sessions)
 
     # Get their IPs
     ended_local_ips = map(lambda s: s['dest_ip'], ended_local_sessions)
@@ -96,7 +111,7 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     all_sessions = list(g_db["sessions"].find())
 
     # filter all internal sessions
-    all_sessions = map(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(), all_sessions)
+    all_sessions = filter(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(), all_sessions)
 
     # ## Extrack KPIs ## #
     # 1. Average number of sessions per host in the network from inside - outside
@@ -111,11 +126,11 @@ def remove_old_sessions_and_extract_kpis(timestamp):
 
     # 3. Average session bandwidth:
     bandwidths = map(lambda session: session['n_bytes'], ended_sessions)
-    append_kpi("sessions_bandwidths", bandwidths)
+    append_kpi("sessions_bandwidths", numpy.mean(bandwidths))
 
     # 4. Average session duration:
     durations = map(lambda session: session['timestamp'] - session['start_time'], ended_sessions)
-    append_kpi("sessions_durations", durations)
+    append_kpi("sessions_durations", numpy.mean(durations))
 
     # For each ended session get number of session with each of other sessions
     # 5. Number of sessions between each host in the net to each remote host:
@@ -134,19 +149,6 @@ def remove_old_sessions_and_extract_kpis(timestamp):
 
     # Remove old sessions
     g_db["sessions"].remove({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}, multi=True)
-
-
-def update_session_bytes(session, n_bytes):
-    g_db["sessions"].update(get_session_id(session), {"$inc": {'n_bytes': n_bytes}})
-
-
-def update_session_timestamp(session):
-    g_db["sessions"].update(get_session_id(session), {"$set": {'timestamp': session['timestamp']}})
-
-
-def update_session_duration(session):
-    session_start_time = g_db.sessions.find_one(get_session_id(session))['start_time']
-    g_db.sessions.update(get_session_id(session), {"$set": {'duration': session['timestamp'] - session_start_time}})
 
 
 def append_kpi(field, value):
