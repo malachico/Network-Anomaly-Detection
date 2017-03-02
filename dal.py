@@ -46,32 +46,32 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     Remove sessions which are older than g_session_time and extract their KPI's
     Those are ToR heuristics, while ToR (source) ---------> (destination) host in the net:
     Those are ToR heuristics, while host (source) ---------> (destination) ToR  in the net:
-    1.       The host (source) has less than average sessions
-    2.       If ToR (destination) has only MAX_TOR_RELAY_SESSIONS https sessions
-    3.       If the source and destination session bandwidth is vast
-    4.       If the destination speaks with the source only in one port
-    5.       If the source speaks with the destination only in one port
-    6.       If the source and destination session duration is long
+    1.  The host (source) has less than average sessions
+    2.  If ToR (destination) has only MAX_TOR_RELAY_SESSIONS https sessions
+    3.	If the source and destination session bandwidth is vast
+    4.	If the destination speaks with the source only in one port
+    5.	If the source speaks with the destination only in one port
+    6.	If the source and destination session duration is long
     *ALERT*
-     
-    The KPI’s:
-    1.	Average number of sessions per host in the network from inside – outside
-    a.	The host (source) has less than average sessions
+    
+    The KPI?s:
+    1.	Average number of sessions per host in the network from inside - outside
+    heuristic:	The host (source) has less than average sessions
 
-    2.	Average number of sessions per remote from outside – inside
-    a.	If ToR (destination) has only 1 session
+    2.	Average number of sessions per remote from outside - inside
+    heuristic:	If ToR (destination) has only 1 session
 
     3.	Average session bandwidth:
-    a.	If the source and destination session bandwidth is vast
+    heuristic:	If the source and destination session bandwidth is vast
 
     4.	Average session duration:
-    a.	If the source and destination session duration is long
+    heuristic:	If the source and destination session duration is long
 
     5.	Number of sessions between each host in the net to each remote host:
-    a.	If the destination speaks with the source only in one port
+    heuristic:	If the destination speaks with the source only in one port
 
     6.	Number of sessions between each host in the net to each remote host:
-    a.	If the source speaks with the destination only in one port
+    heuristic:	If the source speaks with the destination only in one port
 
     :type timestamp: time now
     :return:
@@ -85,15 +85,11 @@ def remove_old_sessions_and_extract_kpis(timestamp):
 
     # Get the ended sessions from inside the network
     ended_local_sessions = map(lambda s: IP(s['dest_ip']).iptype() == 'PRIVATE', ended_sessions)
-    ended_remote_sessions = map(lambda s: IP(s['dest_ip']).iptype() == 'PUBLIC', ended_sessions)
 
     # Get their IPs
     ended_local_ips = map(lambda s: s['dest_ip'], ended_local_sessions)
-    ended_remote_ips = map(lambda s: s['dest_ip'], ended_remote_sessions)
 
     if not ended_local_sessions:
-        append_bandwidths(0)
-        append_durations(0)
         return
 
     # Get all sessions from DB
@@ -103,19 +99,23 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     all_sessions = map(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(), all_sessions)
 
     # ## Extrack KPIs ## #
-    # 1. Average number of sessions per host in the network from inside – outside
+    # 1. Average number of sessions per host in the network from inside - outside
     num_of_sessions_io_list = map(lambda ip: len(filter(lambda s: s['src_ip'] == ip, all_sessions)), ended_local_ips)
     num_of_sessions_io_avg = numpy.mean(num_of_sessions_io_list)
+    append_kpi("num_of_sessions_io_avg", num_of_sessions_io_avg)
 
-    # 2. Average number of sessions per remote from outside – inside
+    # 2. Average number of sessions per remote from outside - inside
     num_of_sessions_oi_list = map(lambda ip: len(filter(lambda s: s['src_ip'] == ip, all_sessions)), ended_local_ips)
     num_of_sessions_oi_avg = numpy.mean(num_of_sessions_oi_list)
+    append_kpi("num_of_sessions_oi_avg", num_of_sessions_oi_avg)
 
     # 3. Average session bandwidth:
     bandwidths = map(lambda session: session['n_bytes'], ended_sessions)
+    append_kpi("sessions_bandwidths", bandwidths)
 
     # 4. Average session duration:
     durations = map(lambda session: session['timestamp'] - session['start_time'], ended_sessions)
+    append_kpi("sessions_durations", durations)
 
     # For each ended session get number of session with each of other sessions
     # 5. Number of sessions between each host in the net to each remote host:
@@ -123,16 +123,16 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     n_sessions_between_2_hosts = []
     for local_ip in ended_local_ips:
         for remote_ip in all_remote_ips:
-            sessions = map(lambda s: local_ip in (s['src_ip'], s['dest_ip']) and remote_ip in (s['src_ip'], s['dest_ip']), all_sessions)
+            sessions = map(
+                lambda s: local_ip in (s['src_ip'], s['dest_ip']) and remote_ip in (s['src_ip'], s['dest_ip']),
+                all_sessions)
             if sessions:
                 n_sessions_between_2_hosts.append(len(sessions))
 
     n_sessions_between_2_hosts_avg = numpy.mean(n_sessions_between_2_hosts)
+    append_kpi("n_sessions_between_2_hosts_avg", n_sessions_between_2_hosts_avg)
 
-
-    append_bandwidths(bandwidths)
-    append_durations(durations)
-
+    # Remove old sessions
     g_db["sessions"].remove({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}, multi=True)
 
 
@@ -149,43 +149,11 @@ def update_session_duration(session):
     g_db.sessions.update(get_session_id(session), {"$set": {'duration': session['timestamp'] - session_start_time}})
 
 
-def append_batches_count(n_packets_in_batch):
-    g_db.kpi.update({"batches_count": {"$exists": True}},
+def append_kpi(field, value):
+    g_db.kpi.update({field: {"$exists": True}},
                     {'$push':
-                        {"batches_count": {
-                            '$each': [n_packets_in_batch],
-                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
-
-
-def append_batches_rate(batch_rate):
-    g_db.kpi.update({"batches_rates": {"$exists": True}},
-                    {'$push':
-                        {"batches_rates": {
-                            '$each': [batch_rate],
-                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
-
-
-def append_batches_ratio(io_ratio):
-    g_db.kpi.update({"batches_ratios": {"$exists": True}},
-                    {'$push':
-                        {"batches_ratios": {
-                            '$each': [io_ratio],
-                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
-
-
-def append_durations(durations):
-    g_db.kpi.update({"sessions_durations": {"$exists": True}},
-                    {'$push':
-                        {"sessions_durations": {
-                            '$each': [durations],
-                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
-
-
-def append_bandwidths(bandwidths):
-    g_db.kpi.update({"sessions_bandwidths": {"$exists": True}},
-                    {'$push':
-                        {"sessions_bandwidths": {
-                            '$each': [bandwidths],
+                        {field: {
+                            '$each': [value],
                             '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
 
 

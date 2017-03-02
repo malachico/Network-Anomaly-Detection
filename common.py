@@ -166,13 +166,13 @@ def extract_kpis(timestamp):
     map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
 
     # Num of packets
-    dal.append_batches_count(len(current_batch))
+    dal.append_kpi("batches_count", len(current_batch))
 
     # Rate STD
-    dal.append_batches_rate(calc_batch_rate_std())
+    dal.append_kpi("batches_ratios", calc_batch_rate_std())
 
     # Ingoing - outgoing ration
-    dal.append_batches_ratio(calc_ioratio())
+    dal.append_kpi("batches_ratios", calc_ioratio())
 
     # Sessions duration and bandwidth
     dal.remove_old_sessions_and_extract_kpis(batch_start_time + BATCH_PERIOD)
