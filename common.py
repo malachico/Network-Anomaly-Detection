@@ -68,14 +68,19 @@ def filter_packet(packet):
 
 def count_packet():
     global packets_counter
+
     packets_counter += 1
+
+    if packets_counter % 10000 == 0:
+        print packets_counter
 
 
 def parameterize(duration):
     global BATCH_PERIOD, PERIODS_IN_HOUR, PERIODS_IN_DAY, NUMBER_OF_BATCHES_TO_REMEMBER, packets_counter
 
     # Average time for 10000 packets to arrive
-    BATCH_PERIOD = (packets_counter / duration) * 10000.0
+    # BATCH_PERIOD = (packets_counter / duration) * 10000.0
+    BATCH_PERIOD = (packets_counter / duration) * 10
 
     PERIODS_IN_HOUR = 60 * 60 / BATCH_PERIOD
 
@@ -173,9 +178,6 @@ def extract_kpis(timestamp):
 
     # Ingoing - outgoing ration
     dal.append_kpi("batches_ratios", calc_ioratio())
-
-    # Sessions duration and bandwidth
-    dal.remove_old_sessions_and_extract_kpis(batch_start_time + BATCH_PERIOD)
 
 
 def build_model():
