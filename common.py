@@ -163,12 +163,9 @@ def extract_kpis(timestamp):
     """
     global current_batch, batch_start_time, BATCH_PERIOD
 
-    # Sessions
-    # Clear all old sessions (timestamp is the time of the current packet)
+    # KPIs
+    # Clear all old sessions (timestamp is the time of the current packet) and extract their KPIs
     dal.remove_old_sessions_and_extract_kpis(timestamp)
-
-    # insert sessions to DB
-    map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
 
     # Num of packets
     dal.append_kpi("batches_count", len(current_batch))
@@ -176,8 +173,13 @@ def extract_kpis(timestamp):
     # Rate STD
     dal.append_kpi("batches_ratios", calc_batch_rate_std())
 
-    # Ingoing - outgoing ration
+    # Ingoing - outgoing ratio
     dal.append_kpi("batches_ratios", calc_ioratio())
+
+    # Insert sessions to DB
+    map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
+
+    sessions_kpis =
 
 
 def build_model():
