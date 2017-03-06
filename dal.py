@@ -59,7 +59,6 @@ def upsert_session(session):
 def remove_old_sessions_and_extract_kpis(timestamp):
     """
     Remove sessions which are older than g_session_time and extract their KPI's
-    Those are ToR heuristics, while ToR (source) ---------> (destination) host in the net:
     Those are ToR heuristics, while host (source) ---------> (destination) ToR  in the net:
     1.  The host (source) has less than average sessions
     2.  If ToR (destination) has only MAX_TOR_RELAY_SESSIONS https sessions
@@ -99,13 +98,15 @@ def remove_old_sessions_and_extract_kpis(timestamp):
                             ended_sessions)
 
     # Get the ended sessions from inside the network
-    ended_local_sessions = filter(lambda s: IP(s['dest_ip']).iptype() == 'PRIVATE', ended_sessions)
+    ended_io_sessions = filter(lambda s: IP(s['dest_ip']).iptype() == 'PUBLIC', ended_sessions)
+    ended_oi_sessions = filter(lambda s: IP(s['dest_ip']).iptype() == 'PRIVATE', ended_sessions)
+
+    if not ended_io_sessions:
+        return
 
     # Get their IPs
-    ended_local_ips = map(lambda s: s['dest_ip'], ended_local_sessions)
-
-    if not ended_local_sessions:
-        return
+    ended_io_ips = map(lambda s: s['src_ip'], ended_io_sessions)
+    ended_oi_ips = map(lambda s: s['src_ip'], ended_oi_sessions)
 
     # Get all sessions from DB
     all_sessions = list(g_db["sessions"].find())
@@ -116,12 +117,12 @@ def remove_old_sessions_and_extract_kpis(timestamp):
 
     # ## Extract KPIs ## #
     # 1. Average number of sessions per host in the network from inside - outside
-    num_of_sessions_io_list = map(lambda ip: len(filter(lambda s: s['src_ip'] == ip, all_sessions)), ended_local_ips)
+    num_of_sessions_io_list = map(lambda ip: len(filter(lambda s: s['src_ip'] == ip, all_sessions)), ended_io_ips)
     num_of_sessions_io_avg = numpy.mean(num_of_sessions_io_list)
     append_kpi("num_of_sessions_io_avg", num_of_sessions_io_avg)
 
     # 2. Average number of sessions per remote from outside - inside
-    num_of_sessions_oi_list = map(lambda ip: len(filter(lambda s: s['src_ip'] == ip, all_sessions)), ended_local_ips)
+    num_of_sessions_oi_list = map(lambda ip: len(filter(lambda s: s['src_ip'] == ip, all_sessions)), ended_oi_ips)
     num_of_sessions_oi_avg = numpy.mean(num_of_sessions_oi_list)
     append_kpi("num_of_sessions_oi_avg", num_of_sessions_oi_avg)
 
@@ -137,7 +138,7 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     # 5. Number of sessions between each host in the net to each remote host:
     all_remote_ips = map(lambda s: IP(s['src_ip']).iptype() == 'PUBLIC', all_sessions)
     n_sessions_between_2_hosts = []
-    for local_ip in ended_local_ips:
+    for local_ip in ended_io_ips:
         for remote_ip in all_remote_ips:
             sessions = map(
                 lambda s: local_ip in (s['src_ip'], s['dest_ip']) and remote_ip in (s['src_ip'], s['dest_ip']),
