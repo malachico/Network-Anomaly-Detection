@@ -111,7 +111,8 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     all_sessions = list(g_db["sessions"].find())
 
     # filter all internal sessions
-    all_sessions = filter(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(), all_sessions)
+    all_sessions = filter(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(),
+                          all_sessions)
 
     # ## Extrack KPIs ## #
     # 1. Average number of sessions per host in the network from inside - outside
@@ -161,3 +162,46 @@ def append_kpi(field, value):
 
 def get_all_kpis():
     return list(g_db.kpi.find({}, {'_id': 0}))
+
+
+def get_session_kpi(session, all_sessions):
+    """
+    For each session - if it is from local net to remote (inside to outside),
+    extract the following KPI's:
+
+    1.	Number of sessions of the host (source) in the local net to outside
+    2.	Number of sessions of the remote (destination) from outside - inside
+    3.	Session bandwidth
+    4.	Session duration
+    5.	Number of sessions between the source and destination
+    6.	Number of sessions between the source and destination
+    """
+    # Number of sessions of the host (source) in the local net to outside
+    n_sessions_src_ip = len(filter(lambda s: s['src_ip'] == session['src_ip'], all_sessions))
+
+    # Number of sessions of the remote (destination) from outside - inside
+    n_sessions_dest_ip = len(filter(lambda s: s['dest_ip'] == session['dest_ip'], all_sessions))
+
+    session_duration = session['timestamp'] - session['start_time']
+
+    # Number of sessions between the source and destination
+    n_sessions_src_dest = len(
+        filter(lambda s: s['dest_ip'] == session['dest_ip'] and s['dest_ip'] == session['dest_ip'], all_sessions))
+
+    # return tuple of the KPIs
+    return (n_sessions_src_ip, n_sessions_dest_ip, session['n_bytes'], session_duration, n_sessions_src_dest,
+            n_sessions_src_dest)
+
+
+def get_sessions_kpi():
+    """
+    :return:
+    """
+    sessions_kpis = {}
+
+    all_sessions = list(g_db.sessions.find())
+
+    inside_out_sessions = filter(lambda session: common.inside_outside_traffic(session), all_sessions)
+
+    for session in inside_out_sessions:
+        sessions_kpis[session] = get_session_kpi(session, all_sessions)

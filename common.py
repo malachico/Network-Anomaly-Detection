@@ -48,6 +48,14 @@ def internal_traffic(ip_frame):
     return IP(src_ip).iptype() == IP(dest_ip).iptype()
 
 
+def inside_outside_traffic(session):
+    """
+    :param session: session to check
+    :return: True if the session is from local net to remote false otherwise
+    """
+    return IP(session['src_ip']).iptype() == 'PRIVATE' and IP(session['dest_ip']).iptype() == 'PUBLIC'
+
+
 def filter_packet(packet):
     # Parse the input
     eth_frame = dpkt.ethernet.Ethernet(packet)
@@ -179,7 +187,7 @@ def extract_kpis(timestamp):
     # Insert sessions to DB
     map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
 
-    sessions_kpis =
+    sessions_kpis = dal.get_sessions_kpi()
 
 
 def build_model():
