@@ -69,7 +69,7 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     6.	If the source and destination session duration is long
     *ALERT*
     
-    The KPI?s:
+    The KPI's:
     1.	Average number of sessions per host in the network from inside - outside
     heuristic:	The host (source) has less than average sessions
 
@@ -114,7 +114,7 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     all_sessions = filter(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(),
                           all_sessions)
 
-    # ## Extrack KPIs ## #
+    # ## Extract KPIs ## #
     # 1. Average number of sessions per host in the network from inside - outside
     num_of_sessions_io_list = map(lambda ip: len(filter(lambda s: s['src_ip'] == ip, all_sessions)), ended_local_ips)
     num_of_sessions_io_avg = numpy.mean(num_of_sessions_io_list)
@@ -195,7 +195,7 @@ def get_session_kpi(session, all_sessions):
 
 def get_sessions_kpi():
     """
-    :return:
+    :return: a dictionary of sessions as keys and tuples of their KPI's as values
     """
     sessions_kpis = {}
 
@@ -205,3 +205,5 @@ def get_sessions_kpi():
 
     for session in inside_out_sessions:
         sessions_kpis[session] = get_session_kpi(session, all_sessions)
+
+    return sessions_kpis

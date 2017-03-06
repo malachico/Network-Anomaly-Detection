@@ -88,7 +88,8 @@ def parameterize(duration):
 
     # Average time for 10000 packets to arrive
     # BATCH_PERIOD = (packets_counter / duration) * 10000.0
-    BATCH_PERIOD = (packets_counter / duration) * 10
+    # BATCH_PERIOD = (packets_counter / duration) * 10
+    BATCH_PERIOD = 20
 
     PERIODS_IN_HOUR = 60 * 60 / BATCH_PERIOD
 
@@ -187,9 +188,16 @@ def extract_kpis(timestamp):
     # Insert sessions to DB
     map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
 
+
+def build_model():
+    kpis = dal.get_all_kpis()
+    covariance_matrix = numpy.cov()
+
+
+    return None
+
+
+def check_batch_probability():
     sessions_kpis = dal.get_sessions_kpi()
 
 
-def build_model():
-    # TODO
-    return None
