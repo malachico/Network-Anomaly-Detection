@@ -1,12 +1,21 @@
 import socket
+from collections import defaultdict
 
+import scipy
+from scipy.stats import multivariate_normal
 import dpkt
 import numpy
 from IPy import IP
-from collections import defaultdict
 
 import dal
 import sessions_extractor
+
+TOR_KPIS = (
+    'num_of_sessions_io_avg', 'num_of_sessions_oi_avg', 'sessions_bandwidths',
+    'sessions_durations', 'n_sessions_between_2_hosts_avg'
+)
+
+model = None
 
 packets_counter = 0
 
@@ -39,6 +48,8 @@ DAYS_REMEMBER = 30
 
 # Number of batches to remember
 NUMBER_OF_BATCHES_TO_REMEMBER = None
+
+EPSILON = 0.1
 
 
 def internal_traffic(ip_frame):
@@ -190,14 +201,19 @@ def extract_kpis(timestamp):
 
 
 def build_model():
-    kpis = dal.get_all_kpis()
-    covariance_matrix = numpy.cov()
+    global model
 
+    kpis = dal.get_kpis(TOR_KPIS)
 
-    return None
+    covariance_matrix = numpy.cov(kpis)
+
+    kpis_means = [numpy.mean(l) for l in kpis]
+
+    model = multivariate_normal(mean=kpis_means, cov=covariance_matrix)
 
 
 def check_batch_probability():
     sessions_kpis = dal.get_sessions_kpi()
 
-
+    for session, kpi in sessions_kpis.iteritems():
+        print model.pdf(kpi)

@@ -68,6 +68,14 @@ def start_sniffing(interface_to_sniff):
 
 
 if __name__ == '__main__':
+    # dal.init_db()
+    #
+    # import common
+    # common.build_model()
+    # common.check_batch_probability()
+    #
+    # if True:
+    #     exit()
 
     # Parse args
     parser = argparse.ArgumentParser()

@@ -35,6 +35,8 @@ class GatheringState(State):
 
             common.build_model()
 
+            common.check_batch_probability()
+
             # change State to Learning
             self.context.set_state(DetectingState(self.context))
 

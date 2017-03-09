@@ -1,6 +1,8 @@
 import numpy
 from IPy import IP
 from pymongo import MongoClient
+import pymongo
+
 import common
 
 g_db = None
@@ -26,6 +28,10 @@ def init_db():
 
     # Create db connection
     g_db = client['ade']
+
+    g_db.sessions.create_index(
+        [("src_ip", pymongo.DESCENDING), ("src_port", pymongo.DESCENDING), ("dest_ip", pymongo.DESCENDING),
+         ("dest_port", pymongo.DESCENDING), ("protocol", pymongo.DESCENDING)])
 
 
 # ### Sessions handling ### #
@@ -90,6 +96,7 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     :type timestamp: time now
     :return:
     """
+
     # Get sessions which ended during the batch
     ended_sessions = list(g_db["sessions"].find({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}))
 
@@ -136,15 +143,10 @@ def remove_old_sessions_and_extract_kpis(timestamp):
 
     # For each ended session get number of session with each of other sessions
     # 5. Number of sessions between each host in the net to each remote host:
-    all_remote_ips = map(lambda s: IP(s['src_ip']).iptype() == 'PUBLIC', all_sessions)
     n_sessions_between_2_hosts = []
-    for local_ip in ended_io_ips:
-        for remote_ip in all_remote_ips:
-            sessions = map(
-                lambda s: local_ip in (s['src_ip'], s['dest_ip']) and remote_ip in (s['src_ip'], s['dest_ip']),
-                all_sessions)
-            if sessions:
-                n_sessions_between_2_hosts.append(len(sessions))
+    for session in ended_sessions:
+        n_sessions = len(filter(lambda s: s['src_ip'] == session['src_ip'] and s['dest_ip'] == session['dest_ip'], all_sessions))
+        n_sessions_between_2_hosts.append(n_sessions)
 
     n_sessions_between_2_hosts_avg = numpy.mean(n_sessions_between_2_hosts)
     append_kpi("n_sessions_between_2_hosts_avg", n_sessions_between_2_hosts_avg)
@@ -162,7 +164,8 @@ def append_kpi(field, value):
 
 
 def get_all_kpis():
-    return list(g_db.kpi.find({}, {'_id': 0}))
+    kpi_dicts = list(g_db.kpi.find({}, {'_id': 0}))
+    return {k: v for kpi_dict in kpi_dicts for k, v in kpi_dict.items()}
 
 
 def get_session_kpi(session, all_sessions):
@@ -176,6 +179,9 @@ def get_session_kpi(session, all_sessions):
     4.	Session duration
     5.	Number of sessions between the source and destination
     6.	Number of sessions between the source and destination
+
+    :param session: session to get KPIs for
+    :param all_sessions: all current sessions
     """
     # Number of sessions of the host (source) in the local net to outside
     n_sessions_src_ip = len(filter(lambda s: s['src_ip'] == session['src_ip'], all_sessions))
@@ -185,13 +191,18 @@ def get_session_kpi(session, all_sessions):
 
     session_duration = session['timestamp'] - session['start_time']
 
+    # in case the duration is 0, log is a problem
+    session_duration = max(session_duration, 1)
+
     # Number of sessions between the source and destination
     n_sessions_src_dest = len(
         filter(lambda s: s['dest_ip'] == session['dest_ip'] and s['dest_ip'] == session['dest_ip'], all_sessions))
 
     # return tuple of the KPIs
-    return (n_sessions_src_ip, n_sessions_dest_ip, session['n_bytes'], session_duration, n_sessions_src_dest,
-            n_sessions_src_dest)
+    kpis = n_sessions_src_ip, n_sessions_dest_ip, session['n_bytes'], session_duration, n_sessions_src_dest
+
+    # log kpis
+    return map(lambda kpi: numpy.math.log(kpi, 2), kpis)
 
 
 def get_sessions_kpi():
@@ -205,6 +216,26 @@ def get_sessions_kpi():
     inside_out_sessions = filter(lambda session: common.inside_outside_traffic(session), all_sessions)
 
     for session in inside_out_sessions:
-        sessions_kpis[session] = get_session_kpi(session, all_sessions)
+        sessions_kpis[tuple(session.items())] = get_session_kpi(session, all_sessions)
 
     return sessions_kpis
+
+
+def draw_histogram(kpi_name, data):
+    import matplotlib.pyplot as plt
+    import math
+    plt.hist(map(lambda x: math.log(x), data[kpi_name]), bins=50, label=kpi_name)
+    plt.title(kpi_name)
+    plt.show()
+
+
+def get_kpis(kpis_names):
+    kpis = []
+
+    for kpi_name in kpis_names:
+        data = g_db.kpi.find_one({kpi_name: {'$exists': 1}}, {'_id': 0})
+        logged_data = map(lambda x: numpy.math.log(x, 2), data[kpi_name])
+        # draw_histogram(kpi_name, g_db.kpi.find_one({kpi_name: {'$exists': 1}}, {'_id': 0}))
+        kpis.append(logged_data)
+
+    return kpis
