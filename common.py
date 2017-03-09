@@ -1,11 +1,10 @@
 import socket
 from collections import defaultdict
 
-import scipy
-from scipy.stats import multivariate_normal
 import dpkt
 import numpy
 from IPy import IP
+from scipy.stats import multivariate_normal
 
 import dal
 import sessions_extractor
@@ -116,7 +115,7 @@ def add_packet_to_batch(timestamp, packet):
     current_batch.append((timestamp, packet))
 
 
-def batch_time_over(timestamp):
+def is_batch_time_over(timestamp):
     return timestamp - batch_start_time > BATCH_PERIOD
 
 
@@ -127,7 +126,7 @@ def reset_batch():
     batch_start_time += BATCH_PERIOD
 
 
-def calc_ioratio():
+def calc_io_ratio():
     global current_batch
     ingoing = 0
     outgoing = 0
@@ -194,10 +193,44 @@ def extract_kpis(timestamp):
     dal.append_kpi("batches_ratios", calc_batch_rate_std())
 
     # Ingoing - outgoing ratio
-    dal.append_kpi("batches_ratios", calc_ioratio())
+    dal.append_kpi("batches_ratios", calc_io_ratio())
 
     # Insert sessions to DB
     map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
+
+
+def calc_presicion(tp, fp):
+    return tp / tp + fp
+
+
+def calc_recall(tp, fn):
+    return tp / tp + fn
+
+
+def calc_f1(p, r):
+    return (2 * p * r) / (p + r)
+
+
+def calc_epsilon_results(epsilon):
+    pass
+
+
+def update_epsilon():
+    sessions_kpis = dal.get_sessions_kpi()
+
+    sorted_values = sorted(sessions_kpis.values())
+
+    min_values = sorted_values[:len(sorted_values) / 10]
+
+    f1_results = {}
+
+    for epsilon in min_values:
+        tp, tn, fp, fn = calc_epsilon_results(epsilon)
+        p = calc_presicion(tp, fp)
+        r = calc_recall(tp, fn)
+        f1_results[epsilon] = calc_f1(p, r)
+
+    return max(f1_results.items(), key=lambda x: x[1])[1]
 
 
 def build_model():
