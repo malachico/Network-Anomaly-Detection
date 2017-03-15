@@ -9,6 +9,8 @@ from scipy.stats import multivariate_normal
 import dal
 import sessions_extractor
 
+HTTPS_PORT = 443
+
 TOR_KPIS = (
     'num_of_sessions_io_avg', 'num_of_sessions_oi_avg', 'sessions_bandwidths',
     'sessions_durations', 'n_sessions_between_2_hosts_avg'
@@ -79,6 +81,16 @@ def filter_packet(packet):
 
     # If the traffic is not incoming traffic - return
     if internal_traffic(ip_frame):
+        return False
+
+    # if not TCP return
+    if ip_frame.p != dpkt.ip.IP_PROTO_TCP:
+        return False
+
+    tcp_frame = ip_frame.data
+
+    # If it is not HTTPS return
+    if HTTPS_PORT not in (tcp_frame.sport, tcp_frame.dport):
         return False
 
     return ip_frame
@@ -181,7 +193,6 @@ def extract_kpis(timestamp):
     :return:
     """
     global current_batch, batch_start_time, BATCH_PERIOD
-
     # KPIs
     # Clear all old sessions (timestamp is the time of the current packet) and extract their KPIs
     dal.remove_old_sessions_and_extract_kpis(timestamp)
@@ -190,47 +201,13 @@ def extract_kpis(timestamp):
     dal.append_kpi("batches_count", len(current_batch))
 
     # Rate STD
-    dal.append_kpi("batches_ratios", calc_batch_rate_std())
+    dal.append_kpi("batches_rate_std", calc_batch_rate_std())
 
     # Ingoing - outgoing ratio
     dal.append_kpi("batches_ratios", calc_io_ratio())
 
     # Insert sessions to DB
     map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
-
-
-def calc_presicion(tp, fp):
-    return tp / tp + fp
-
-
-def calc_recall(tp, fn):
-    return tp / tp + fn
-
-
-def calc_f1(p, r):
-    return (2 * p * r) / (p + r)
-
-
-def calc_epsilon_results(epsilon):
-    pass
-
-
-def update_epsilon():
-    sessions_kpis = dal.get_sessions_kpi()
-
-    sorted_values = sorted(sessions_kpis.values())
-
-    min_values = sorted_values[:len(sorted_values) / 10]
-
-    f1_results = {}
-
-    for epsilon in min_values:
-        tp, tn, fp, fn = calc_epsilon_results(epsilon)
-        p = calc_presicion(tp, fp)
-        r = calc_recall(tp, fn)
-        f1_results[epsilon] = calc_f1(p, r)
-
-    return max(f1_results.items(), key=lambda x: x[1])[1]
 
 
 def build_model():
@@ -249,4 +226,4 @@ def check_batch_probability():
     sessions_kpis = dal.get_sessions_kpi()
 
     for session, kpi in sessions_kpis.iteritems():
-        print model.pdf(kpi)
+        dal.insert_session_prob(session, model.pdf(kpi), kpi)

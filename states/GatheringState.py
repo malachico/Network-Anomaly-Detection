@@ -1,3 +1,5 @@
+import time
+
 import common
 from State import State
 from states.DetectingState import DetectingState
@@ -35,13 +37,9 @@ class GatheringState(State):
 
             common.build_model()
 
-            common.update_epsilon()
-
-            common.check_batch_probability()
-
             # change State to Learning
             self.context.set_state(DetectingState(self.context))
 
     def check_if_move_to_next_state(self, timestamp):
-        timestamp - State.state_start_time > common.GATHERING_TIME
+        return timestamp - State.state_start_time > common.GATHERING_TIME
 

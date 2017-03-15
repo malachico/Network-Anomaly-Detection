@@ -4,8 +4,6 @@ from IPy import IP
 import dal
 import socket
 
-HTTPS_PORT = 443
-
 
 def is_internal_traffic(src_ip, dest_ip):
     """
@@ -24,18 +22,7 @@ def handle_sessions(timestamp, ip_frame):
     src_ip = socket.inet_ntoa(ip_frame.src)
     dest_ip = socket.inet_ntoa(ip_frame.dst)
 
-    if is_internal_traffic(src_ip, dest_ip):
-        return
-
-    # if not TCP return
-    if ip_frame.p != dpkt.ip.IP_PROTO_TCP:
-        return
-
     tcp_frame = ip_frame.data
-
-    # If it is not HTTPS return
-    if HTTPS_PORT not in (tcp_frame.sport, tcp_frame.dport):
-        return
 
     # Pack all the parameters in a dictionary
     https_packet = {'src_ip': src_ip,

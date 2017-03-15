@@ -6,7 +6,7 @@ import pymongo
 import common
 
 g_db = None
-ENDED_SESSION_TIME = 3 * 60
+ENDED_SESSION_TIME = 60
 
 
 def get_session_id(session):
@@ -71,7 +71,6 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     3.	If the source and destination session bandwidth is vast
     4.	If the destination speaks with the source only in one port
     5.	If the source speaks with the destination only in one port
-    6.	If the source and destination session duration is long
     *ALERT*
     
     The KPI's:
@@ -84,13 +83,12 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     3.	Average session bandwidth:
     heuristic:	If the source and destination session bandwidth is vast
 
+
     4.	Average session duration:
     heuristic:	If the source and destination session duration is long
 
     5.	Number of sessions between each host in the net to each remote host:
     heuristic:	If the destination speaks with the source only in one port
-
-    6.	Number of sessions between each host in the net to each remote host:
     heuristic:	If the source speaks with the destination only in one port
 
     :type timestamp: time now
@@ -145,7 +143,8 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     # 5. Number of sessions between each host in the net to each remote host:
     n_sessions_between_2_hosts = []
     for session in ended_sessions:
-        n_sessions = len(filter(lambda s: s['src_ip'] == session['src_ip'] and s['dest_ip'] == session['dest_ip'], all_sessions))
+        n_sessions = len(
+            filter(lambda s: s['src_ip'] == session['src_ip'] and s['dest_ip'] == session['dest_ip'], all_sessions))
         n_sessions_between_2_hosts.append(n_sessions)
 
     n_sessions_between_2_hosts_avg = numpy.mean(n_sessions_between_2_hosts)
@@ -178,7 +177,6 @@ def get_session_kpi(session, all_sessions):
     3.	Session bandwidth
     4.	Session duration
     5.	Number of sessions between the source and destination
-    6.	Number of sessions between the source and destination
 
     :param session: session to get KPIs for
     :param all_sessions: all current sessions
@@ -211,9 +209,9 @@ def get_sessions_kpi():
     """
     sessions_kpis = {}
 
-    all_sessions = list(g_db.sessions.find())
+    all_sessions = list(g_db.sessions.find({}, {'_id': 0}))
 
-    inside_out_sessions = filter(lambda session: common.inside_outside_traffic(session), all_sessions)
+    inside_out_sessions = filter(lambda s: common.inside_outside_traffic(s), all_sessions)
 
     for session in inside_out_sessions:
         sessions_kpis[tuple(session.items())] = get_session_kpi(session, all_sessions)
@@ -239,3 +237,18 @@ def get_kpis(kpis_names):
         kpis.append(logged_data)
 
     return kpis
+
+
+def insert_session_prob(session, prob, kpi):
+    session = dict(session)
+    session.update({'prob': prob, 'kpi': kpi})
+
+    return g_db['epsilon'].update(get_session_id(session), session, upsert=True)
+
+
+def drop_sessions():
+    g_db.sessions.drop()
+
+
+def get_epsilons():
+    return g_db.epsilon.find({}, {'_id': 0})
