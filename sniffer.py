@@ -68,13 +68,6 @@ def start_sniffing(interface_to_sniff):
 
 
 if __name__ == '__main__':
-    dal.init_db()
-    import common
-    common.build_model()
-
-    if True:
-        exit()
-
     # Parse args
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--mode', help='mode of capturing: sniff | pcap', required=True)

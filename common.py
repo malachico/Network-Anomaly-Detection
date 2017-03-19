@@ -40,7 +40,7 @@ PERIODS_IN_HOUR = None
 PERIODS_IN_DAY = None
 
 # Number of required batches before checking the traffic
-TIME_TO_PARAMETERIZE = 1  # 24 * 60 * 60  # 1 Day
+TIME_TO_PARAMETERIZE = 24 * 60 * 60  # 1 Day
 
 GATHERING_TIME = 24 * 60 * 60 * 14  # 2 weeks
 

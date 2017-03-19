@@ -1,5 +1,6 @@
 import numpy
 from IPy import IP
+from collections import defaultdict
 from pymongo import MongoClient
 import pymongo
 
@@ -95,12 +96,11 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     :return:
     """
 
-    # Get sessions which ended during the batch
-    ended_sessions = list(g_db["sessions"].find({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}))
+    # Get all sessions from DB
+    all_sessions = list(g_db["sessions"].find())
 
-    # filter all internal sessions
-    ended_sessions = filter(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(),
-                            ended_sessions)
+    # Get sessions which ended during the batch
+    ended_sessions = filter(lambda s: timestamp - s['timestamp'] > ENDED_SESSION_TIME, all_sessions)
 
     # Get the ended sessions from inside the network
     ended_io_sessions = filter(lambda s: IP(s['dest_ip']).iptype() == 'PUBLIC', ended_sessions)
@@ -109,16 +109,12 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     if not ended_io_sessions:
         return
 
+    if not ended_oi_sessions:
+        return
+
     # Get their IPs
     ended_io_ips = map(lambda s: s['src_ip'], ended_io_sessions)
     ended_oi_ips = map(lambda s: s['src_ip'], ended_oi_sessions)
-
-    # Get all sessions from DB
-    all_sessions = list(g_db["sessions"].find())
-
-    # filter all internal sessions
-    all_sessions = filter(lambda session: IP(session['src_ip']).iptype() != IP(session['dest_ip']).iptype(),
-                          all_sessions)
 
     # ## Extract KPIs ## #
     # 1. Average number of sessions per host in the network from inside - outside
@@ -132,22 +128,23 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     append_kpi("num_of_sessions_oi_avg", num_of_sessions_oi_avg)
 
     # 3. Average session bandwidth:
-    bandwidths = map(lambda session: session['n_bytes'], ended_sessions)
+    bandwidths = map(lambda s: s['n_bytes'], ended_sessions)
     append_kpi("sessions_bandwidths", numpy.mean(bandwidths))
 
     # 4. Average session duration:
-    durations = map(lambda session: session['timestamp'] - session['start_time'], ended_sessions)
-    append_kpi("sessions_durations", numpy.mean(durations))
+    durations = map(lambda s: s['timestamp'] - s['start_time'], ended_sessions)
+    duration_mean = numpy.mean(durations)
+    append_kpi("sessions_durations", max(duration_mean, 1))
 
     # For each ended session get number of session with each of other sessions
     # 5. Number of sessions between each host in the net to each remote host:
-    n_sessions_between_2_hosts = []
-    for session in ended_sessions:
-        n_sessions = len(
-            filter(lambda s: s['src_ip'] == session['src_ip'] and s['dest_ip'] == session['dest_ip'], all_sessions))
-        n_sessions_between_2_hosts.append(n_sessions)
+    n_sessions_between_2_hosts = defaultdict(int)
 
-    n_sessions_between_2_hosts_avg = numpy.mean(n_sessions_between_2_hosts)
+    for session in all_sessions:
+        session_ips = tuple(sorted((session['src_ip'], session['dest_ip'])))
+        n_sessions_between_2_hosts[session_ips] += 1
+
+    n_sessions_between_2_hosts_avg = numpy.mean(n_sessions_between_2_hosts.values())
     append_kpi("n_sessions_between_2_hosts_avg", n_sessions_between_2_hosts_avg)
 
     # Remove old sessions
@@ -251,4 +248,8 @@ def drop_sessions():
 
 
 def get_epsilons():
-    return g_db.epsilon.find({}, {'_id': 0})
+    return list(g_db.epsilon.find({}, {'_id': 0}))
+
+
+def drop_epsilons():
+    return g_db.epsilon.drop()
