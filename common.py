@@ -11,10 +11,9 @@ import sessions_extractor
 
 HTTPS_PORT = 443
 
-TOR_KPIS = (
-    'num_of_sessions_io_avg', 'num_of_sessions_oi_avg', 'sessions_bandwidths',
-    'sessions_durations', 'n_sessions_between_2_hosts_avg'
-)
+TOR_KPIS = ('num_of_sessions_io_avg', 'sessions_bandwidths', 'sessions_durations')
+
+kpis_means = None
 
 model = None
 
@@ -24,12 +23,6 @@ batch_start_time = None
 
 # Batch of the current period
 current_batch = None
-
-# probability critics for length of batch
-BATCH_LEN_EPSILON = 0.01
-
-# probability critics for rate in batch
-RATE_EPSILON = 0.01
 
 # Time period for each batch
 BATCH_PERIOD = None
@@ -50,7 +43,7 @@ DAYS_REMEMBER = 30
 # Number of batches to remember
 NUMBER_OF_BATCHES_TO_REMEMBER = None
 
-EPSILON = 0.1
+EPSILON = 2.09003339968e-11
 
 
 def internal_traffic(ip_frame):
@@ -108,10 +101,10 @@ def count_packet():
 def parameterize(duration):
     global BATCH_PERIOD, PERIODS_IN_HOUR, PERIODS_IN_DAY, NUMBER_OF_BATCHES_TO_REMEMBER, packets_counter
 
-    # Average time for 10000 packets to arrive
-    # BATCH_PERIOD = (packets_counter / duration) * 10000.0
-    # BATCH_PERIOD = (packets_counter / duration) * 10
-    BATCH_PERIOD = 20
+    # Average time for 5000 packets to arrive
+    BATCH_PERIOD = (duration / float(packets_counter)) * 5000.0
+
+    print "BATCH_PERIOD : ", BATCH_PERIOD
 
     PERIODS_IN_HOUR = 60 * 60 / BATCH_PERIOD
 
@@ -211,7 +204,7 @@ def extract_kpis(timestamp):
 
 
 def build_model():
-    global model
+    global model, kpis_means
 
     kpis = dal.get_kpis(TOR_KPIS)
 
@@ -225,5 +218,44 @@ def build_model():
 def check_batch_probability():
     sessions_kpis = dal.get_sessions_kpi()
 
+    suspected_sessions = dal.get_all_sessions()
+
     for session, kpi in sessions_kpis.iteritems():
-        dal.insert_session_prob(session, model.pdf(kpi), kpi)
+        # Check heuristics
+        """
+        1. heuristic:	If ToR (destination) has only 1 session
+        2. heuristic:	If the destination speaks with the source only in one port
+        3. heuristic:	If the source speaks with the destination only in one port
+
+        """
+        session = dict(session)
+
+        # Check the stats are above average
+        if kpi[0] > kpis_means[0]:  # num_of_sessions_io_avg
+            continue
+        if kpi[1] < kpis_means[1]:  # sessions_bandwidths
+            continue
+        if kpi[2] < kpis_means[2]:  # sessions_durations
+            continue
+
+        # 1. heuristic:	If ToR (destination) has only 1 session
+        # 2. heuristic:	If the destination speaks with the source only in one port
+        if len(filter(lambda s: s['dest_ip'] == session['dest_ip'], suspected_sessions)) > 1:
+            suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
+            continue
+
+        # 3. heuristic:	If the source speaks with the destination only in one port
+        if len(filter(lambda s: s['dest_ip'] == session['src_ip'] and s['src_ip'] == session['dest_ip'],
+                      suspected_sessions)) > 1:
+            suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
+            continue
+
+        # Check probability
+        if model.pdf(kpi) > EPSILON:
+            suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
+            continue
+
+        print session
+        dal.alert(session, model.pdf(kpi))
+
+        # dal.insert_session_prob(session, model.pdf(kpi), kpi)

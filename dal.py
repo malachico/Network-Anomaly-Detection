@@ -78,43 +78,31 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     1.	Average number of sessions per host in the network from inside - outside
     heuristic:	The host (source) has less than average sessions
 
-    2.	Average number of sessions per remote from outside - inside
-    heuristic:	If ToR (destination) has only 1 session
-
-    3.	Average session bandwidth:
+    2.	Average session bandwidth:
     heuristic:	If the source and destination session bandwidth is vast
 
-
-    4.	Average session duration:
+    3.	Average session duration:
     heuristic:	If the source and destination session duration is long
 
-    5.	Number of sessions between each host in the net to each remote host:
-    heuristic:	If the destination speaks with the source only in one port
-    heuristic:	If the source speaks with the destination only in one port
 
     :type timestamp: time now
     :return:
     """
 
     # Get all sessions from DB
-    all_sessions = list(g_db["sessions"].find())
+    all_sessions = get_all_sessions()
 
     # Get sessions which ended during the batch
     ended_sessions = filter(lambda s: timestamp - s['timestamp'] > ENDED_SESSION_TIME, all_sessions)
 
     # Get the ended sessions from inside the network
     ended_io_sessions = filter(lambda s: IP(s['dest_ip']).iptype() == 'PUBLIC', ended_sessions)
-    ended_oi_sessions = filter(lambda s: IP(s['dest_ip']).iptype() == 'PRIVATE', ended_sessions)
 
     if not ended_io_sessions:
         return
 
-    if not ended_oi_sessions:
-        return
-
     # Get their IPs
     ended_io_ips = map(lambda s: s['src_ip'], ended_io_sessions)
-    ended_oi_ips = map(lambda s: s['src_ip'], ended_oi_sessions)
 
     # ## Extract KPIs ## #
     # 1. Average number of sessions per host in the network from inside - outside
@@ -122,30 +110,14 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     num_of_sessions_io_avg = numpy.mean(num_of_sessions_io_list)
     append_kpi("num_of_sessions_io_avg", num_of_sessions_io_avg)
 
-    # 2. Average number of sessions per remote from outside - inside
-    num_of_sessions_oi_list = map(lambda ip: len(filter(lambda s: s['src_ip'] == ip, all_sessions)), ended_oi_ips)
-    num_of_sessions_oi_avg = numpy.mean(num_of_sessions_oi_list)
-    append_kpi("num_of_sessions_oi_avg", num_of_sessions_oi_avg)
-
-    # 3. Average session bandwidth:
+    # 2. Average session bandwidth:
     bandwidths = map(lambda s: s['n_bytes'], ended_sessions)
     append_kpi("sessions_bandwidths", numpy.mean(bandwidths))
 
-    # 4. Average session duration:
+    # 3. Average session duration:
     durations = map(lambda s: s['timestamp'] - s['start_time'], ended_sessions)
     duration_mean = numpy.mean(durations)
     append_kpi("sessions_durations", max(duration_mean, 1))
-
-    # For each ended session get number of session with each of other sessions
-    # 5. Number of sessions between each host in the net to each remote host:
-    n_sessions_between_2_hosts = defaultdict(int)
-
-    for session in all_sessions:
-        session_ips = tuple(sorted((session['src_ip'], session['dest_ip'])))
-        n_sessions_between_2_hosts[session_ips] += 1
-
-    n_sessions_between_2_hosts_avg = numpy.mean(n_sessions_between_2_hosts.values())
-    append_kpi("n_sessions_between_2_hosts_avg", n_sessions_between_2_hosts_avg)
 
     # Remove old sessions
     g_db["sessions"].remove({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}, multi=True)
@@ -170,10 +142,8 @@ def get_session_kpi(session, all_sessions):
     extract the following KPI's:
 
     1.	Number of sessions of the host (source) in the local net to outside
-    2.	Number of sessions of the remote (destination) from outside - inside
-    3.	Session bandwidth
-    4.	Session duration
-    5.	Number of sessions between the source and destination
+    2.	Session bandwidth
+    3.	Session duration
 
     :param session: session to get KPIs for
     :param all_sessions: all current sessions
@@ -181,20 +151,14 @@ def get_session_kpi(session, all_sessions):
     # Number of sessions of the host (source) in the local net to outside
     n_sessions_src_ip = len(filter(lambda s: s['src_ip'] == session['src_ip'], all_sessions))
 
-    # Number of sessions of the remote (destination) from outside - inside
-    n_sessions_dest_ip = len(filter(lambda s: s['dest_ip'] == session['dest_ip'], all_sessions))
-
+    # Session duration
     session_duration = session['timestamp'] - session['start_time']
 
     # in case the duration is 0, log is a problem
     session_duration = max(session_duration, 1)
 
-    # Number of sessions between the source and destination
-    n_sessions_src_dest = len(
-        filter(lambda s: s['dest_ip'] == session['dest_ip'] and s['dest_ip'] == session['dest_ip'], all_sessions))
-
     # return tuple of the KPIs
-    kpis = n_sessions_src_ip, n_sessions_dest_ip, session['n_bytes'], session_duration, n_sessions_src_dest
+    kpis = n_sessions_src_ip,  session['n_bytes'], session_duration,
 
     # log kpis
     return map(lambda kpi: numpy.math.log(kpi, 2), kpis)
@@ -253,3 +217,27 @@ def get_epsilons():
 
 def drop_epsilons():
     return g_db.epsilon.drop()
+
+
+def alert(session, prob):
+    """
+    Add alert to DB if not found yet
+    :param prob: probability for session
+    :param session: the session which created the alert
+    :return:
+    """
+    doc_to_upsert = dict(session)
+    doc_to_upsert.update({'prob': prob})
+
+    # upsert the doc and check the results
+    result = g_db['alerts'].update(get_session_id(session), doc_to_upsert, upsert=True)
+
+    # If it is not the first time this session was reported, return
+    if result['updatedExisting']:
+        return
+
+    print "ToR detected in session: ", session
+
+
+def get_all_sessions():
+    return list(g_db["sessions"].find({}, {'_id': 0}))
