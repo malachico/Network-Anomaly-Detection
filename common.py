@@ -51,6 +51,8 @@ NUMBER_OF_BATCHES_TO_REMEMBER = None
 
 SESSIONS_EPSILON = 2.09003339968e-11
 
+TEAMVIEWER_IPS = IP('178.77.120.0/24')
+
 
 def internal_traffic(ip_frame):
     src_ip = socket.inet_ntoa(ip_frame.src)
@@ -179,6 +181,7 @@ def is_https(ip_frame):
 
     return True
 
+
 def extract_kpis(timestamp):
     """
     Parse sessions,
@@ -212,8 +215,8 @@ def extract_kpis(timestamp):
     dal.append_kpi("timestamp", batch_start_time)
 
     # Insert sessions to DB
-    # https_packets = filter(lambda ip_frame: is_https(ip_frame), current_batch)
-    # map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), https_packets)
+    https_packets = filter(lambda ip_frame: is_https(ip_frame), current_batch)
+    map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), https_packets)
 
 
 def build_model():
@@ -276,9 +279,12 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
             suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
             continue
 
+        # Check if TeamViewer session
+        if session['dest_ip'] in TEAMVIEWER_IPS:
+            continue
+
         print session
         dal.alert(session, sessions_model.pdf(kpi))
-
         # dal.insert_session_prob(session, model.pdf(kpi), kpi)
 
 
