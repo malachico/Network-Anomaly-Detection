@@ -13,9 +13,15 @@ HTTPS_PORT = 443
 
 TOR_KPIS = ('num_of_sessions_io_avg', 'sessions_bandwidths', 'sessions_durations')
 
-kpis_means = None
+DDOS_KPIS = ('batches_count', 'batches_rate_std', 'batches_ratios')
 
-model = None
+sessions_kpis_means = None
+
+batches_kpis_means = None
+
+sessions_model = None
+
+batches_model = None
 
 packets_counter = 0
 
@@ -33,7 +39,7 @@ PERIODS_IN_HOUR = None
 PERIODS_IN_DAY = None
 
 # Number of required batches before checking the traffic
-TIME_TO_PARAMETERIZE = 24 * 60 * 60  # 1 Day
+TIME_TO_PARAMETERIZE = 5 * 60  # 24 * 60 * 60  # 1 Day
 
 GATHERING_TIME = 24 * 60 * 60 * 14  # 2 weeks
 
@@ -43,7 +49,7 @@ DAYS_REMEMBER = 30
 # Number of batches to remember
 NUMBER_OF_BATCHES_TO_REMEMBER = None
 
-EPSILON = 2.09003339968e-11
+SESSIONS_EPSILON = 2.09003339968e-11
 
 
 def internal_traffic(ip_frame):
@@ -74,16 +80,6 @@ def filter_packet(packet):
 
     # If the traffic is not incoming traffic - return
     if internal_traffic(ip_frame):
-        return False
-
-    # if not TCP return
-    if ip_frame.p != dpkt.ip.IP_PROTO_TCP:
-        return False
-
-    tcp_frame = ip_frame.data
-
-    # If it is not HTTPS return
-    if HTTPS_PORT not in (tcp_frame.sport, tcp_frame.dport):
         return False
 
     return ip_frame
@@ -170,6 +166,19 @@ def calc_batch_rate_std():
     return numpy.var(packets_per_sec.values())
 
 
+def is_https(ip_frame):
+    # if not TCP return
+    if ip_frame.p != dpkt.ip.IP_PROTO_TCP:
+        return False
+
+    tcp_frame = ip_frame.data
+
+    # If it is not HTTPS return
+    if HTTPS_PORT not in (tcp_frame.sport, tcp_frame.dport):
+        return False
+
+    return True
+
 def extract_kpis(timestamp):
     """
     Parse sessions,
@@ -199,27 +208,37 @@ def extract_kpis(timestamp):
     # Ingoing - outgoing ratio
     dal.append_kpi("batches_ratios", calc_io_ratio())
 
+    # Ingoing - outgoing ratio
+    dal.append_kpi("timestamp", batch_start_time)
+
     # Insert sessions to DB
-    map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), current_batch)
+    # https_packets = filter(lambda ip_frame: is_https(ip_frame), current_batch)
+    # map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), https_packets)
 
 
 def build_model():
-    global model, kpis_means
+    global sessions_model, sessions_kpis_means, batches_model, batches_kpis_means
 
+    # Build sessions model
     kpis = dal.get_kpis(TOR_KPIS)
 
     covariance_matrix = numpy.cov(kpis)
 
-    kpis_means = [numpy.mean(l) for l in kpis]
+    sessions_kpis_means = [numpy.mean(l) for l in kpis]
 
-    model = multivariate_normal(mean=kpis_means, cov=covariance_matrix)
+    sessions_model = multivariate_normal(mean=sessions_kpis_means, cov=covariance_matrix)
+
+    # Build batches model
+    kpis = dal.get_kpis(DDOS_KPIS)
+
+    covariance_matrix = numpy.cov(kpis)
+
+    batches_kpis_means = [numpy.mean(l) for l in kpis]
+
+    batches_model = multivariate_normal(mean=batches_kpis_means, cov=covariance_matrix)
 
 
-def check_batch_probability():
-    sessions_kpis = dal.get_sessions_kpi()
-
-    suspected_sessions = dal.get_all_sessions()
-
+def check_tor_prob(sessions_kpis, suspected_sessions):
     for session, kpi in sessions_kpis.iteritems():
         # Check heuristics
         """
@@ -231,11 +250,13 @@ def check_batch_probability():
         session = dict(session)
 
         # Check the stats are above average
-        if kpi[0] > kpis_means[0]:  # num_of_sessions_io_avg
+        if kpi[0] > sessions_kpis_means[0]:  # num_of_sessions_io_avg
             continue
-        if kpi[1] < kpis_means[1]:  # sessions_bandwidths
+
+        if kpi[1] < sessions_kpis_means[1]:  # sessions_bandwidths
             continue
-        if kpi[2] < kpis_means[2]:  # sessions_durations
+
+        if kpi[2] < sessions_kpis_means[2]:  # sessions_durations
             continue
 
         # 1. heuristic:	If ToR (destination) has only 1 session
@@ -251,11 +272,47 @@ def check_batch_probability():
             continue
 
         # Check probability
-        if model.pdf(kpi) > EPSILON:
+        if sessions_model.pdf(kpi) > SESSIONS_EPSILON:
             suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
             continue
 
         print session
-        dal.alert(session, model.pdf(kpi))
+        dal.alert(session, sessions_model.pdf(kpi))
 
         # dal.insert_session_prob(session, model.pdf(kpi), kpi)
+
+
+def check_ddos_prob():
+    global current_batch
+    # Check heuristics
+    """
+    1. heuristic:	If ToR (destination) has only 1 session
+    2. heuristic:	If the destination speaks with the source only in one port
+    3. heuristic:	If the source speaks with the destination only in one port
+
+    """
+    current_batch_kpis = (len(current_batch), calc_batch_rate_std(), calc_io_ratio())
+
+    # Check the stats are above average
+    if current_batch_kpis[0] < batches_kpis_means[0]:  # batches_count
+        return
+
+    if current_batch_kpis[1] < batches_kpis_means[1]:  # batches_rate_std
+        return
+
+    if current_batch_kpis[2] < batches_kpis_means[1]:  # batches_ratios
+        return
+
+    # Check probability
+    if batches_model.pdf(current_batch_kpis) > SESSIONS_EPSILON:
+        return
+
+    print zip(DDOS_KPIS, current_batch_kpis)
+    print "batch start time : ", batch_start_time
+
+
+def check_batch_probability():
+    sessions_kpis = dal.get_sessions_kpi()
+
+    check_tor_prob(sessions_kpis, dal.get_all_sessions())
+    check_ddos_prob()
