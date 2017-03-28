@@ -3,7 +3,7 @@ from socket import inet_ntoa
 from IPy import IP
 
 import dal
-from common import current_batch
+import common
 
 TEAMVIEWER_PORT = 5938
 TEAMVIEWER_IPS = IP('178.77.120.0/24')
@@ -22,9 +22,9 @@ def is_teamviewer(ip_frame):
     return True
 
 
-def check_for_teamviewer():
+def check_for_teamviewer(timestamp):
     # Filter the teamviewer packets
-    tv_frames = filter(lambda ip_frame: is_teamviewer(ip_frame), current_batch)
+    tv_frames = filter(lambda ip_frame: is_teamviewer(ip_frame), common.current_batch)
 
     # Insert the ips which used the teamviewer to the whitelist in DB
-    map(lambda frame: dal.upsert_whitelist(inet_ntoa(frame.src)), tv_frames)
+    map(lambda frame: dal.upsert_whitelist(inet_ntoa(frame.src), timestamp), tv_frames)

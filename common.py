@@ -276,6 +276,9 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
             suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
             continue
 
+        if dal.is_in_whitelist(session['src_ip'], session['timestamp']):
+            continue
+
         print session
         dal.alert(session, sessions_model.pdf(kpi))
         # dal.insert_session_prob(session, model.pdf(kpi), kpi)
@@ -317,5 +320,5 @@ def check_batch_probability():
     check_ddos_prob()
 
 
-def check_whitelist_packets():
-    whitelist.check_for_teamviewer()
+def check_whitelist_packets(timestamp):
+    whitelist.check_for_teamviewer(timestamp)

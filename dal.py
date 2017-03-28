@@ -1,13 +1,13 @@
 import numpy
-from IPy import IP
-from collections import defaultdict
-from pymongo import MongoClient
 import pymongo
+from IPy import IP
+from pymongo import MongoClient
 
 import common
 
 g_db = None
 ENDED_SESSION_TIME = 60
+WHITELIST_TIME = 7 * 60 * 60
 
 
 def get_session_id(session):
@@ -243,6 +243,17 @@ def get_all_sessions():
     return list(g_db["sessions"].find({}, {'_id': 0}))
 
 
-def upsert_whitelist(ip):
-    ip_dict = {'ip': ip}
-    g_db['whitelist'].update(ip_dict, ip_dict, upsert=True)
+# Whitelist methods
+def upsert_whitelist(ip, timestamp):
+    # dict to insert to whitelist collection
+    dict_to_upsert = {'ip': ip, 'timestamp': timestamp}
+
+    g_db['whitelist'].update({'ip': ip}, dict_to_upsert, upsert=True)
+
+
+def is_in_whitelist(ip, timestamp):
+    # remove old whitelist tuples
+    g_db["whitelist"].remove({"timestamp": {"$lt": timestamp - WHITELIST_TIME}}, multi=True)
+
+    # Return True if such an IP exists
+    return g_db['whitelist'].find_one({'ip': ip}) is not None
