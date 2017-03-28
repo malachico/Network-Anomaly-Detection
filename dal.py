@@ -188,12 +188,19 @@ def draw_histogram(kpi_name, data):
     plt.show()
 
 
+def safe_log(num):
+    try:
+        return numpy.math.log(num, 2)
+    except ValueError:
+        return num
+
+
 def get_kpis(kpis_names):
     kpis = []
 
     for kpi_name in kpis_names:
         data = g_db.kpi.find_one({kpi_name: {'$exists': 1}}, {'_id': 0})
-        logged_data = map(lambda x: numpy.math.log(x, 2), data[kpi_name])
+        logged_data = map(lambda x: safe_log(x), data[kpi_name])
         # draw_histogram(kpi_name, g_db.kpi.find_one({kpi_name: {'$exists': 1}}, {'_id': 0}))
         kpis.append(logged_data)
 
