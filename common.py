@@ -39,7 +39,7 @@ PERIODS_IN_HOUR = None
 PERIODS_IN_DAY = None
 
 # Number of required batches before checking the traffic
-TIME_TO_PARAMETERIZE = 5  # * 60  # 24 * 60 * 60  # 1 Day
+TIME_TO_PARAMETERIZE = 5 * 60  # 24 * 60 * 60  # 1 Day
 
 GATHERING_TIME = 24 * 60 * 60 * 14  # 2 weeks
 
@@ -50,6 +50,7 @@ DAYS_REMEMBER = 30
 NUMBER_OF_BATCHES_TO_REMEMBER = None
 
 SESSIONS_EPSILON = 2.09003339968e-11
+
 
 def internal_traffic(ip_frame):
     src_ip = socket.inet_ntoa(ip_frame.src)

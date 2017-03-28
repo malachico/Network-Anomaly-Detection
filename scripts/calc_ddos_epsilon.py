@@ -1,9 +1,10 @@
-import common
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
 import dal
 import sniffer
-import pandas as pd
-import numpy as np
-import seaborn as sns
+
 
 def calc_presicion(tp, fp):
     if tp + fp == 0:
@@ -66,4 +67,3 @@ if __name__ == '__main__':
     sns.distplot(logged_data, bins=100)
 
     sns.plt.show()
-

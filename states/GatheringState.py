@@ -41,4 +41,3 @@ class GatheringState(State):
 
     def check_if_move_to_next_state(self, timestamp):
         return timestamp - State.state_start_time > common.GATHERING_TIME
-
