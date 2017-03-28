@@ -1,5 +1,6 @@
 from socket import inet_ntoa
 
+import dpkt
 from IPy import IP
 
 import dal
@@ -10,6 +11,9 @@ TEAMVIEWER_IPS = IP('178.77.120.0/24')
 
 
 def is_teamviewer(ip_frame):
+    if ip_frame.p not in (dpkt.ip.IP_PROTO_TCP, dpkt.ip.IP_PROTO_UDP):
+        return False
+
     l4_frame = ip_frame.data
 
     if TEAMVIEWER_PORT != l4_frame.dport:
