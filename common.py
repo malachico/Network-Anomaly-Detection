@@ -310,7 +310,6 @@ def check_ddos_prob():
     if batches_model.pdf(current_batch_kpis) > SESSIONS_EPSILON:
         return
 
-    print zip(DDOS_KPIS, current_batch_kpis)
     print "batch start time : ", batch_start_time
 
 
@@ -318,7 +317,7 @@ def check_batch_probability():
     sessions_kpis = dal.get_sessions_kpi()
 
     check_tor_prob(sessions_kpis, dal.get_all_sessions())
-    check_ddos_prob()
+    # check_ddos_prob()
 
 
 def check_whitelist_packets():
