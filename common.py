@@ -39,7 +39,7 @@ PERIODS_IN_HOUR = None
 PERIODS_IN_DAY = None
 
 # Number of required batches before checking the traffic
-TIME_TO_PARAMETERIZE = 5 * 60  # 24 * 60 * 60  # 1 Day
+TIME_TO_PARAMETERIZE = 5  # * 60  # 24 * 60 * 60  # 1 Day
 
 GATHERING_TIME = 24 * 60 * 60 * 14  # 2 weeks
 
@@ -212,7 +212,7 @@ def extract_kpis(timestamp):
     dal.append_kpi("timestamp", batch_start_time)
 
     # Insert sessions to DB
-    https_packets = filter(lambda ip_frame: is_https(ip_frame), current_batch)
+    https_packets = filter(lambda ip_frame: is_https(ip_frame[1]), current_batch)
     map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), https_packets)
 
 
@@ -320,5 +320,5 @@ def check_batch_probability():
     check_ddos_prob()
 
 
-def check_whitelist_packets(timestamp):
-    whitelist.check_for_teamviewer(timestamp)
+def check_whitelist_packets():
+    whitelist.check_for_teamviewer()

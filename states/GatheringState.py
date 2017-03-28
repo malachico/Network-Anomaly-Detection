@@ -24,7 +24,7 @@ class GatheringState(State):
         common.add_packet_to_batch(timestamp, ip_frame)
 
         if common.is_batch_time_over(timestamp):
-            common.check_whitelist_packets(timestamp)
+            common.check_whitelist_packets()
             common.extract_kpis(timestamp)
             common.reset_batch()
 
