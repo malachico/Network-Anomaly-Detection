@@ -5,7 +5,7 @@ import dpkt
 import numpy
 from IPy import IP
 from scipy.stats import multivariate_normal
-
+import whitelist
 import dal
 import sessions_extractor
 
@@ -50,9 +50,6 @@ DAYS_REMEMBER = 30
 NUMBER_OF_BATCHES_TO_REMEMBER = None
 
 SESSIONS_EPSILON = 2.09003339968e-11
-
-TEAMVIEWER_IPS = IP('178.77.120.0/24')
-
 
 def internal_traffic(ip_frame):
     src_ip = socket.inet_ntoa(ip_frame.src)
@@ -279,10 +276,6 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
             suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
             continue
 
-        # Check if TeamViewer session
-        if session['dest_ip'] in TEAMVIEWER_IPS:
-            continue
-
         print session
         dal.alert(session, sessions_model.pdf(kpi))
         # dal.insert_session_prob(session, model.pdf(kpi), kpi)
@@ -322,3 +315,7 @@ def check_batch_probability():
 
     check_tor_prob(sessions_kpis, dal.get_all_sessions())
     check_ddos_prob()
+
+
+def check_whitelist_packets():
+    whitelist.check_for_teamviewer()

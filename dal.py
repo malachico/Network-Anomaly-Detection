@@ -158,7 +158,7 @@ def get_session_kpi(session, all_sessions):
     session_duration = max(session_duration, 1)
 
     # return tuple of the KPIs
-    kpis = n_sessions_src_ip,  session['n_bytes'], session_duration,
+    kpis = n_sessions_src_ip, session['n_bytes'], session_duration,
 
     # log kpis
     return map(lambda kpi: numpy.math.log(kpi, 2), kpis)
@@ -241,3 +241,8 @@ def alert(session, prob):
 
 def get_all_sessions():
     return list(g_db["sessions"].find({}, {'_id': 0}))
+
+
+def upsert_whitelist(ip):
+    ip_dict = {'ip': ip}
+    g_db['whitelist'].update(ip_dict, ip_dict, upsert=True)
