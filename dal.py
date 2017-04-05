@@ -1,9 +1,11 @@
+import dpkt
 import numpy
 import pymongo
 from IPy import IP
 from pymongo import MongoClient
 
 import common
+import socket
 
 g_db = None
 
@@ -51,24 +53,31 @@ def is_session_exists(session):
     return g_db['sessions'].find_one(get_session_id(session)) is not None
 
 
-def upsert_session(session, timestamp):
+def upsert_session(timestamp, ip_frame):
     """
     Given a session - insert if not exist, update if exist
+    :param ip_frame:
     :param timestamp: timestamp of the session
-    :param session:
     :return: None
     """
 
+    l4_frame = ip_frame.data
+
+    # Pack all the parameters in a dictionary
+    packet_dict = {'src_ip': socket.inet_ntoa(ip_frame.src),
+                   'src_port': l4_frame.sport,
+                   'dest_ip': socket.inet_ntoa(ip_frame.dst),
+                   'dest_port': l4_frame.dport,
+                   'protocol': dpkt.ip.IP_PROTO_TCP,
+                   'n_bytes': len(ip_frame),
+                   'timestamp': timestamp
+                   }
+
     g_db['sessions'].update(
-        get_session_id(session),
+        get_session_id(packet_dict),
         {
-            "$set": {
-                "timestamp": timestamp
-            },
-            "$setOnInsert": {
-                "timestamp": timestamp,
-                "start_time": timestamp
-            }
+            "$set": packet_dict,
+            "$setOnInsert": {"start_time": timestamp}
         },
         upsert=True
     )

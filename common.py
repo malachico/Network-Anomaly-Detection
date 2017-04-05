@@ -5,9 +5,9 @@ import dpkt
 import numpy
 from IPy import IP
 from scipy.stats import multivariate_normal
-import whitelist
+
 import dal
-import sessions_extractor
+import whitelist
 
 HTTPS_PORT = 443
 
@@ -43,7 +43,7 @@ ENDED_SESSION_TIME = 60
 WHITELIST_TIME = 60 * 60
 
 # Number of required batches before checking the traffic
-TIME_TO_PARAMETERIZE = 24 * 60 * 60  # 1 Day
+TIME_TO_PARAMETERIZE =0# 24 * 60 * 60  # 1 Day
 
 GATHERING_TIME = 24 * 60 * 60 * 14  # 2 weeks
 
@@ -102,7 +102,7 @@ def parameterize(duration):
     global BATCH_PERIOD, PERIODS_IN_HOUR, PERIODS_IN_DAY, NUMBER_OF_BATCHES_TO_REMEMBER, packets_counter
 
     # Average time for 5000 packets to arrive
-    BATCH_PERIOD = (duration / float(packets_counter)) * 5000.0
+    BATCH_PERIOD = 15 # (duration / float(packets_counter)) * 5000.0
 
     print "BATCH_PERIOD : ", BATCH_PERIOD
 
@@ -218,7 +218,7 @@ def extract_kpis(timestamp):
 
     # Insert sessions to DB
     https_packets = filter(lambda ip_frame: is_https(ip_frame[1]), current_batch)
-    map(lambda ts_pckt: sessions_extractor.handle_sessions(ts_pckt[0], ts_pckt[1]), https_packets)
+    map(lambda ts_pckt: dal.upsert_session(ts_pckt[0], ts_pckt[1]), https_packets)
 
 
 def build_model():
