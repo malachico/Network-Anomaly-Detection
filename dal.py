@@ -6,8 +6,6 @@ from pymongo import MongoClient
 import common
 
 g_db = None
-ENDED_SESSION_TIME = 60
-WHITELIST_TIME = 7 * 60 * 60
 
 
 def get_session_id(session):
@@ -93,7 +91,7 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     all_sessions = get_all_sessions()
 
     # Get sessions which ended during the batch
-    ended_sessions = filter(lambda s: timestamp - s['timestamp'] > ENDED_SESSION_TIME, all_sessions)
+    ended_sessions = filter(lambda s: timestamp - s['timestamp'] > common.ENDED_SESSION_TIME, all_sessions)
 
     # Get the ended sessions from inside the network
     ended_io_sessions = filter(lambda s: IP(s['dest_ip']).iptype() == 'PUBLIC', ended_sessions)
@@ -120,7 +118,7 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     append_kpi("sessions_durations", max(duration_mean, 1))
 
     # Remove old sessions
-    g_db["sessions"].remove({"timestamp": {"$lt": timestamp - ENDED_SESSION_TIME}}, multi=True)
+    g_db["sessions"].remove({"timestamp": {"$lt": timestamp - common.ENDED_SESSION_TIME}}, multi=True)
 
 
 def append_kpi(field, value):
@@ -180,14 +178,6 @@ def get_sessions_kpi():
     return sessions_kpis
 
 
-def draw_histogram(kpi_name, data):
-    import matplotlib.pyplot as plt
-    import math
-    plt.hist(map(lambda x: math.log(x), data[kpi_name]), bins=50, label=kpi_name)
-    plt.title(kpi_name)
-    plt.show()
-
-
 def safe_log(num):
     try:
         return numpy.math.log(num, 2)
@@ -218,23 +208,27 @@ def drop_sessions():
     g_db.sessions.drop()
 
 
-def get_epsilons():
-    return list(g_db.epsilon.find({}, {'_id': 0}))
+def get_all_sessions():
+    return list(g_db["sessions"].find({}, {'_id': 0}))
 
 
-def drop_epsilons():
-    return g_db.epsilon.drop()
-
-
+# ################## Alert methods ################## #
 def alert(session, prob):
     """
     Add alert to DB if not found yet
+    If the session alerted is in whitelist mark it as whitelist and then insert to DB
     :param prob: probability for session
     :param session: the session which created the alert
     :return:
     """
     doc_to_upsert = dict(session)
     doc_to_upsert.update({'prob': prob})
+
+    session['whitelist'] = False
+
+    if is_in_whitelist(session['src_ip'], session['timestamp']):
+        session['whitelist'] = True
+        remove_from_whitelist(session['src_ip'])
 
     # upsert the doc and check the results
     result = g_db['alerts'].update(get_session_id(session), doc_to_upsert, upsert=True)
@@ -246,11 +240,7 @@ def alert(session, prob):
     print "ToR detected in session: ", session
 
 
-def get_all_sessions():
-    return list(g_db["sessions"].find({}, {'_id': 0}))
-
-
-# Whitelist methods
+# ################## Whitelist methods ################## #
 def upsert_whitelist(ip, timestamp):
     # dict to insert to whitelist collection
     dict_to_upsert = {'ip': ip, 'timestamp': timestamp}
@@ -260,7 +250,20 @@ def upsert_whitelist(ip, timestamp):
 
 def is_in_whitelist(ip, timestamp):
     # remove old whitelist tuples
-    g_db["whitelist"].remove({"timestamp": {"$lt": timestamp - WHITELIST_TIME}}, multi=True)
+    g_db["whitelist"].remove({"timestamp": {"$lt": timestamp - common.WHITELIST_TIME}}, multi=True)
 
     # Return True if such an IP exists
     return g_db['whitelist'].find_one({'ip': ip}) is not None
+
+
+def remove_from_whitelist(ip):
+    g_db["whitelist"].remove({'ip': ip})
+
+
+# ################## Epsilon methods ################## #
+def get_epsilons():
+    return list(g_db.epsilon.find({}, {'_id': 0}))
+
+
+def drop_epsilons():
+    return g_db.epsilon.drop()

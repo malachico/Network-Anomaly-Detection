@@ -3,8 +3,8 @@ from socket import inet_ntoa
 import dpkt
 from IPy import IP
 
-import dal
 import common
+import dal
 
 TEAMVIEWER_PORT = 5938
 TEAMVIEWER_IPS = IP('178.77.120.0/24')

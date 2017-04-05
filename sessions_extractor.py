@@ -4,6 +4,8 @@ from IPy import IP
 import dal
 import socket
 
+import whitelist
+
 
 def is_internal_traffic(src_ip, dest_ip):
     """

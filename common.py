@@ -38,10 +38,14 @@ PERIODS_IN_HOUR = None
 
 PERIODS_IN_DAY = None
 
+ENDED_SESSION_TIME = 60
+
+WHITELIST_TIME = 60 * 60
+
 # Number of required batches before checking the traffic
 TIME_TO_PARAMETERIZE = 0  # 5 * 60  # 24 * 60 * 60  # 1 Day
 
-GATHERING_TIME = 10 * 60  # 24 * 60 * 60 * 14  # 2 weeks
+GATHERING_TIME = 0  # 10 * 60  # 24 * 60 * 60 * 14  # 2 weeks
 
 # Days backwards to remember batches
 DAYS_REMEMBER = 30
@@ -277,11 +281,7 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
             suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
             continue
 
-        if dal.is_in_whitelist(session['src_ip'], session['timestamp']):
-            continue
-
         dal.alert(session, sessions_model.pdf(kpi))
-        # dal.insert_session_prob(session, model.pdf(kpi), kpi)
 
 
 def check_ddos_prob():
@@ -319,5 +319,5 @@ def check_batch_probability():
     # check_ddos_prob()
 
 
-def check_whitelist_packets():
+def preprocess_batch():
     whitelist.check_for_teamviewer()
