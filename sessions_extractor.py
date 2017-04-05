@@ -32,16 +32,6 @@ def handle_sessions(timestamp, ip_frame):
                     'dest_port': tcp_frame.dport,
                     'protocol': dpkt.ip.IP_PROTO_TCP,
                     'n_bytes': packet_bytes_len,
-                    'timestamp': timestamp,
-                    'start_time': timestamp,
                     }
 
-    # If session is not found yet in the DB, upsert and return
-    if not dal.is_session_exists(https_packet):
-        dal.upsert_session(https_packet)
-        return
-
-    # If session is already exist, update its bytes duration and timestamp
-    dal.update_session_bytes(https_packet, packet_bytes_len)
-
-    dal.update_session_timestamp(https_packet)
+    dal.upsert_session(https_packet, timestamp)

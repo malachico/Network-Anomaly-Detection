@@ -51,13 +51,27 @@ def is_session_exists(session):
     return g_db['sessions'].find_one(get_session_id(session)) is not None
 
 
-def upsert_session(session):
+def upsert_session(session, timestamp):
     """
     Given a session - insert if not exist, update if exist
+    :param timestamp: timestamp of the session
     :param session:
     :return: None
     """
-    return g_db['sessions'].update(get_session_id(session), session, upsert=True)
+
+    g_db['sessions'].update(
+        get_session_id(session),
+        {
+            "$set": {
+                "timestamp": timestamp
+            },
+            "$setOnInsert": {
+                "timestamp": timestamp,
+                "start_time": timestamp
+            }
+        },
+        upsert=True
+    )
 
 
 # ### KPI handling ### #
@@ -71,7 +85,7 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     4.	If the destination speaks with the source only in one port
     5.	If the source speaks with the destination only in one port
     *ALERT*
-    
+
     The KPI's:
     1.	Average number of sessions per host in the network from inside - outside
     heuristic:	The host (source) has less than average sessions
