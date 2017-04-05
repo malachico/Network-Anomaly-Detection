@@ -36,23 +36,6 @@ def init_db():
 
 
 # ### Sessions handling ### #
-def update_session_bytes(session, n_bytes):
-    g_db["sessions"].update(get_session_id(session), {"$inc": {'n_bytes': n_bytes}})
-
-
-def update_session_timestamp(session):
-    g_db["sessions"].update(get_session_id(session), {"$set": {'timestamp': session['timestamp']}})
-
-
-def update_session_duration(session):
-    session_start_time = g_db.sessions.find_one(get_session_id(session))['start_time']
-    g_db.sessions.update(get_session_id(session), {"$set": {'duration': session['timestamp'] - session_start_time}})
-
-
-def is_session_exists(session):
-    return g_db['sessions'].find_one(get_session_id(session)) is not None
-
-
 def upsert_session(timestamp, ip_frame):
     """
     Given a session - insert if not exist, update if exist
@@ -201,38 +184,21 @@ def get_sessions_kpi():
     return sessions_kpis
 
 
-def safe_log(num):
-    try:
-        return numpy.math.log(num, 2)
-    except ValueError:
-        return num
-
-
 def get_kpis(kpis_names):
+    def safe_log(num):
+        try:
+            return numpy.math.log(num, 2)
+        except ValueError:
+            return num
+
     kpis = []
 
     for kpi_name in kpis_names:
         data = g_db.kpi.find_one({kpi_name: {'$exists': 1}}, {'_id': 0})
         logged_data = map(lambda x: safe_log(x), data[kpi_name])
-        # draw_histogram(kpi_name, g_db.kpi.find_one({kpi_name: {'$exists': 1}}, {'_id': 0}))
         kpis.append(logged_data)
 
     return kpis
-
-
-def insert_session_prob(session, prob, kpi):
-    session = dict(session)
-    session.update({'prob': prob, 'kpi': kpi})
-
-    return g_db['epsilon'].update(get_session_id(session), session, upsert=True)
-
-
-def drop_sessions():
-    g_db.sessions.drop()
-
-
-def get_all_sessions():
-    return list(g_db["sessions"].find({}, {'_id': 0}))
 
 
 # ################## Alert methods ################## #
@@ -290,3 +256,12 @@ def get_epsilons():
 
 def drop_epsilons():
     return g_db.epsilon.drop()
+
+
+# ################## debug methods ################## #
+def drop_sessions():
+    g_db.sessions.drop()
+
+
+def get_all_sessions():
+    return list(g_db["sessions"].find({}, {'_id': 0}))
