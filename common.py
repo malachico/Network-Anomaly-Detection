@@ -280,7 +280,6 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
         if dal.is_in_whitelist(session['src_ip'], session['timestamp']):
             continue
 
-        print session
         dal.alert(session, sessions_model.pdf(kpi))
         # dal.insert_session_prob(session, model.pdf(kpi), kpi)
 
