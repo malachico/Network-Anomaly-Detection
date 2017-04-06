@@ -234,13 +234,13 @@ def build_model():
     sessions_model = multivariate_normal(mean=sessions_kpis_means, cov=covariance_matrix)
 
     # Build batches model
-    kpis = dal.get_kpis(DDOS_KPIS)
-
-    covariance_matrix = numpy.cov(kpis)
-
-    batches_kpis_means = [numpy.mean(l) for l in kpis]
-
-    batches_model = multivariate_normal(mean=batches_kpis_means, cov=covariance_matrix)
+    # kpis = dal.get_kpis(DDOS_KPIS)
+    #
+    # covariance_matrix = numpy.cov(kpis)
+    #
+    # batches_kpis_means = [numpy.mean(l) for l in kpis]
+    #
+    # batches_model = multivariate_normal(mean=batches_kpis_means, cov=covariance_matrix)
 
 
 def check_tor_prob(sessions_kpis, suspected_sessions):
@@ -321,3 +321,5 @@ def check_batch_probability():
 
 def preprocess_batch():
     whitelist.check_for_teamviewer()
+
+
