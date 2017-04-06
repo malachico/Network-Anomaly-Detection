@@ -31,4 +31,4 @@ def check_for_teamviewer():
     tv_frames = filter(lambda ip_frame: is_teamviewer(ip_frame[1]), common.current_batch)
 
     # Insert the ips which used the teamviewer to the whitelist in DB
-    map(lambda frame: dal.upsert_whitelist(inet_ntoa(frame.src), frame[0]), tv_frames)
+    map(lambda frame: dal.upsert_whitelist(inet_ntoa(frame[1].src), frame[0]), tv_frames)
