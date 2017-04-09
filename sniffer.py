@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     import common
 
-    common.build_model()
+    common.build_models()
     if True:
         exit()
     # get mode : pcap file reader or sniffing

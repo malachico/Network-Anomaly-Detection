@@ -13,7 +13,7 @@ HTTPS_PORT = 443
 
 TOR_KPIS = ('num_of_sessions_io_avg', 'sessions_bandwidths', 'sessions_durations')
 
-DDOS_KPIS = ('packets_count', 'packets_rate_std', 'io_ratios')
+DDOS_KPIS = ('packets_count', 'io_ratios')
 
 sessions_kpis_means = None
 
@@ -155,21 +155,6 @@ def calc_io_ratio():
     return ingoing / float(outgoing)
 
 
-def calc_batch_rate_std():
-    """
-
-    :return: the std of packets per second in the current batch
-    """
-    global current_batch
-
-    packets_per_sec = defaultdict(int)
-
-    for ts_pckt in current_batch:
-        packets_per_sec[ts_pckt[0]] += 1
-
-    return numpy.var(packets_per_sec.values())
-
-
 def is_https(ip_frame):
     # if not TCP return
     if ip_frame.p != dpkt.ip.IP_PROTO_TCP:
@@ -192,7 +177,6 @@ def extract_kpis(timestamp):
 
     KPI's:
     * number of packets
-    * rate variance in batch
     * ingoing/outgoing packets ratio
     * session duration
     * session bandwidth
@@ -211,7 +195,6 @@ def extract_kpis(timestamp):
     # Num of packets
     batch_kpis = {"timestamp": batch_start_time,
                   "packets_count": len(current_batch),
-                  "packets_rate_std": calc_batch_rate_std(),
                   "io_ratios": calc_io_ratio()}
 
     # Insert KPIs tp DB
@@ -230,26 +213,20 @@ def safe_log(num):
         return num
 
 
-def build_model():
+def build_models():
     global sessions_model, sessions_kpis_means, batches_model, batches_kpis_means
 
     # Build sessions model
     kpis = dal.get_kpis('sessions_kpis')
 
-    covariance_matrix = numpy.cov(kpis)
+    kpis = kpis.applymap(lambda x: safe_log(x))
 
-    sessions_kpis_means = [numpy.mean(l) for l in kpis]
-
-    sessions_model = multivariate_normal(mean=sessions_kpis_means, cov=covariance_matrix)
+    sessions_model = multivariate_normal(mean=kpis.mean(), cov=kpis.cov())
 
     # Build batches model
     kpis = dal.get_kpis('batches_kpis')
 
-    covariance_matrix = numpy.cov(kpis)
-
-    batches_kpis_means = [numpy.mean(l) for l in kpis]
-
-    batches_model = multivariate_normal(mean=batches_kpis_means, cov=covariance_matrix)
+    batches_model = multivariate_normal(mean=kpis.mean(), cov=kpis.cov())
 
 
 def check_tor_prob(sessions_kpis, suspected_sessions):
@@ -302,16 +279,13 @@ def check_ddos_prob():
     3. heuristic:	If the source speaks with the destination only in one port
 
     """
-    current_batch_kpis = (len(current_batch), calc_batch_rate_std(), calc_io_ratio())
+    current_batch_kpis = (len(current_batch), calc_io_ratio())
 
     # Check the stats are above average
     if current_batch_kpis[0] < batches_kpis_means[0]:  # batches_count
         return
 
-    if current_batch_kpis[1] < batches_kpis_means[1]:  # batches_rate_std
-        return
-
-    if current_batch_kpis[2] < batches_kpis_means[1]:  # batches_ratios
+    if current_batch_kpis[1] < batches_kpis_means[1]:  # batches_ratios
         return
 
     # Check probability

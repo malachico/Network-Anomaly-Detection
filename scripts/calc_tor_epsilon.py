@@ -73,7 +73,7 @@ if __name__ == '__main__':
     min_values = map(lambda x: x['prob'], min_values)
 
     # calc model from training set
-    common.build_model()
+    common.build_models()
 
     f1_results = {}
 
