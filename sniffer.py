@@ -67,15 +67,18 @@ def start_sniffing(interface_to_sniff):
         context.current_state.process_packet(time.time(), packet)
 
 
-if __name__ == '__main__':
-    # Parse args
+def init_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--mode', help='mode of capturing: sniff | pcap', required=True)
     parser.add_argument('-i', '--interface', help='interface to sniff from when in sniff mode', required=False)
     parser.add_argument('-f', '--file', help='file to capture when in pcap mode', required=False)
     parser.add_argument('-cdb', '--clean-db', help='yes | no if you want to clean the db before running',
                         required=False, default=True)
+    return parser
 
+if __name__ == '__main__':
+    # Parse args
+    parser = init_parser()
     args = vars(parser.parse_args())
 
     # Check if to clean DB
@@ -84,11 +87,6 @@ if __name__ == '__main__':
     # Init DB
     dal.init_db()
 
-    import common
-
-    common.build_models()
-    if True:
-        exit()
     # get mode : pcap file reader or sniffing
     mode = sys.argv[1]
 
