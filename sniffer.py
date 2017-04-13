@@ -76,6 +76,7 @@ def init_parser():
                         required=False, default=True)
     return parser
 
+
 if __name__ == '__main__':
     # Parse args
     parser = init_parser()
@@ -87,6 +88,11 @@ if __name__ == '__main__':
     # Init DB
     dal.init_db()
 
+    import common
+
+    common.build_models()
+    if True:
+        exit()
     # get mode : pcap file reader or sniffing
     mode = sys.argv[1]
 

@@ -15,10 +15,6 @@ TOR_KPIS = ('num_of_sessions_io_avg', 'sessions_bandwidths', 'sessions_durations
 
 DDOS_KPIS = ('packets_count', 'io_ratios')
 
-sessions_kpis_means = None
-
-batches_kpis_means = None
-
 sessions_model = None
 
 batches_model = None
@@ -214,7 +210,7 @@ def safe_log(num):
 
 
 def build_models():
-    global sessions_model, sessions_kpis_means, batches_model, batches_kpis_means
+    global sessions_model, batches_model
 
     # Build sessions model
     kpis = dal.get_kpis('sessions_kpis')
@@ -241,13 +237,13 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
         session = dict(session)
 
         # Check the stats are above average
-        if kpi[0] > sessions_kpis_means[0]:  # num_of_sessions_io_avg
+        if kpi[0] > sessions_model.mean[0]:  # num_of_sessions_io_avg
             continue
 
-        if kpi[1] < sessions_kpis_means[1]:  # sessions_bandwidths
+        if kpi[1] < sessions_model.mean[1]:  # sessions_bandwidths
             continue
 
-        if kpi[2] < sessions_kpis_means[2]:  # sessions_durations
+        if kpi[2] < sessions_model.mean[2]:  # sessions_durations
             continue
 
         # 1. heuristic:	If ToR (destination) has only 1 session
@@ -282,10 +278,10 @@ def check_ddos_prob():
     current_batch_kpis = (len(current_batch), calc_io_ratio())
 
     # Check the stats are above average
-    if current_batch_kpis[0] < batches_kpis_means[0]:  # batches_count
+    if current_batch_kpis[0] < batches_model.mean[0]:  # batches_count
         return
 
-    if current_batch_kpis[1] < batches_kpis_means[1]:  # batches_ratios
+    if current_batch_kpis[1] < batches_model.mean[1]:  # batches_ratios
         return
 
     # Check probability
