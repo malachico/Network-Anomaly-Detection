@@ -248,5 +248,5 @@ def get_all_sessions():
 
 
 def get_all_kpis():
-    kpi_dicts = list(g_db.kpi.find({}, {'_id': 0}))
+    kpi_dicts = list(g_db.batches_kpis.find({}, {'_id': 0}))
     return {k: v for kpi_dict in kpi_dicts for k, v in kpi_dict.items()}
