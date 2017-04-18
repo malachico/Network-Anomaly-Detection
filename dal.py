@@ -52,7 +52,6 @@ def upsert_session(timestamp, ip_frame):
                    'dest_ip': socket.inet_ntoa(ip_frame.dst),
                    'dest_port': l4_frame.dport,
                    'protocol': dpkt.ip.IP_PROTO_TCP,
-                   'n_bytes': len(ip_frame),
                    'timestamp': timestamp
                    }
 
@@ -60,7 +59,8 @@ def upsert_session(timestamp, ip_frame):
         get_session_id(packet_dict),
         {
             "$set": packet_dict,
-            "$setOnInsert": {"start_time": timestamp}
+            "$inc": {'n_bytes': len(ip_frame)},
+            "$setOnInsert": {'start_time': timestamp}
         },
         upsert=True
     )
