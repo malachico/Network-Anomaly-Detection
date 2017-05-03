@@ -25,4 +25,4 @@ class DetectingState(State):
             common.reset_batch()
 
     def check_if_move_to_next_state(self, timestamp):
-        pass
+        return False

@@ -43,9 +43,9 @@ ENDED_SESSION_TIME = 60
 WHITELIST_TIME = 60 * 60
 
 # Number of required batches before checking the traffic
-TIME_TO_PARAMETERIZE = 24 * 60 * 60  # 1 Day
+TIME_TO_PARAMETERIZE = 0  # 1 Day
 
-GATHERING_TIME = 24 * 60 * 60 * 14  # 2 weeks
+GATHERING_TIME = 24 * 60 * 60 * 14 * 100  # 2 weeks
 
 # Days backwards to remember batches
 DAYS_REMEMBER = 30
@@ -102,7 +102,7 @@ def parameterize(duration):
     global BATCH_PERIOD, PERIODS_IN_HOUR, PERIODS_IN_DAY, NUMBER_OF_BATCHES_TO_REMEMBER, packets_counter
 
     # Average time for 5000 packets to arrive
-    BATCH_PERIOD = (duration / float(packets_counter)) * 5000.0
+    BATCH_PERIOD = 30  # (duration / float(packets_counter)) * 5000.0
 
     print "BATCH_PERIOD : ", BATCH_PERIOD
 
@@ -321,5 +321,3 @@ def check_batch_probability():
 
 def preprocess_batch():
     whitelist.check_for_teamviewer()
-
-
