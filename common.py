@@ -182,11 +182,11 @@ def extract_kpis(timestamp):
     global current_batch, batch_start_time, BATCH_PERIOD
     # KPIs
     # Insert sessions to DB
-    # https_packets = filter(lambda ip_frame: is_https(ip_frame[1]), current_batch)
-    # map(lambda ts_pckt: dal.upsert_session(ts_pckt[0], ts_pckt[1]), https_packets)
+    https_packets = filter(lambda ip_frame: is_https(ip_frame[1]), current_batch)
+    map(lambda ts_pckt: dal.upsert_session(ts_pckt[0], ts_pckt[1]), https_packets)
 
     # Clear all old sessions (timestamp is the time of the current packet) and extract their KPIs
-    # sessions_kpis = dal.remove_old_sessions_and_extract_kpis(timestamp)
+    sessions_kpis = dal.remove_old_sessions_and_extract_kpis(timestamp)
 
     # Num of packets
     batch_kpis = {"timestamp": batch_start_time,
@@ -196,10 +196,10 @@ def extract_kpis(timestamp):
     # Insert KPIs tp DB
     dal.insert_kpis("batches_kpis", batch_kpis)
 
-    # if not sessions_kpis:
-    #     return
+    if not sessions_kpis:
+        return
 
-    # dal.insert_kpis("sessions_kpis", sessions_kpis)
+    dal.insert_kpis("sessions_kpis", sessions_kpis)
 
 
 def safe_log(num):
