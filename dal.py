@@ -3,7 +3,7 @@ import numpy
 import pymongo
 from IPy import IP
 from pymongo import MongoClient
-
+import pandas as pd
 import common
 import socket
 
@@ -111,33 +111,26 @@ def remove_old_sessions_and_extract_kpis(timestamp):
     # ## Extract KPIs ## #
     # 1. Average number of sessions per host in the network from inside - outside
     num_of_sessions_io_list = map(lambda ip: len(filter(lambda s: s['src_ip'] == ip, all_sessions)), ended_io_ips)
-    num_of_sessions_io_avg = numpy.mean(num_of_sessions_io_list)
-    append_kpi("num_of_sessions_io_avg", num_of_sessions_io_avg)
 
     # 2. Average session bandwidth:
     bandwidths = map(lambda s: s['n_bytes'], ended_sessions)
-    append_kpi("sessions_bandwidths", numpy.mean(bandwidths))
 
     # 3. Average session duration:
     durations = map(lambda s: s['timestamp'] - s['start_time'], ended_sessions)
-    duration_mean = numpy.mean(durations)
-    append_kpi("sessions_durations", max(duration_mean, 1))
+
+    sessions_kpis = {"num_of_sessions_io_avg": numpy.mean(num_of_sessions_io_list),
+                     "sessions_bandwidths": numpy.mean(bandwidths),
+                     "sessions_durations": max(numpy.mean(durations), 1),
+                     "timestamp": timestamp}
 
     # Remove old sessions
     g_db["sessions"].remove({"timestamp": {"$lt": timestamp - common.ENDED_SESSION_TIME}}, multi=True)
 
-
-def append_kpi(field, value):
-    g_db.kpi.update({field: {"$exists": True}},
-                    {'$push':
-                        {field: {
-                            '$each': [value],
-                            '$slice': -common.NUMBER_OF_BATCHES_TO_REMEMBER}}}, upsert=True)
+    return sessions_kpis
 
 
-def get_all_kpis():
-    kpi_dicts = list(g_db.kpi.find({}, {'_id': 0}))
-    return {k: v for kpi_dict in kpi_dicts for k, v in kpi_dict.items()}
+def insert_kpis(collection, kpis):
+    g_db[collection].insert_one(kpis)
 
 
 def get_session_kpi(session, all_sessions):
@@ -184,21 +177,8 @@ def get_sessions_kpi():
     return sessions_kpis
 
 
-def get_kpis(kpis_names):
-    def safe_log(num):
-        try:
-            return numpy.math.log(num, 2)
-        except ValueError:
-            return num
-
-    kpis = []
-
-    for kpi_name in kpis_names:
-        data = g_db.kpi.find_one({kpi_name: {'$exists': 1}}, {'_id': 0})
-        logged_data = map(lambda x: safe_log(x), data[kpi_name])
-        kpis.append(logged_data)
-
-    return kpis
+def get_kpis(collection):
+    return pd.DataFrame(list(g_db[collection].find({}, {'_id': 0, 'timestamp': 0})))
 
 
 # ################## Alert methods ################## #
@@ -265,3 +245,8 @@ def drop_sessions():
 
 def get_all_sessions():
     return list(g_db["sessions"].find({}, {'_id': 0}))
+
+
+def get_all_kpis():
+    kpi_dicts = list(g_db.batches_kpis.find({}, {'_id': 0}))
+    return {k: v for kpi_dict in kpi_dicts for k, v in kpi_dict.items()}

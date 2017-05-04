@@ -34,7 +34,7 @@ class GatheringState(State):
             # Set start time for next phase
             State.state_start_time = timestamp
 
-            common.build_model()
+            common.build_models()
 
             # change State to Learning
             self.context.set_state(DetectingState(self.context))
