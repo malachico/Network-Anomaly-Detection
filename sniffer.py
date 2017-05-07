@@ -88,6 +88,12 @@ if __name__ == '__main__':
     # Init DB
     dal.init_db()
 
+    ####
+
+    dal.get_kpis("batches_kpis")
+    if True:
+        exit()
+    ####
     # get mode : pcap file reader or sniffing
     mode = sys.argv[1]
 
