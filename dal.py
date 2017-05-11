@@ -182,13 +182,13 @@ def get_kpis(collection):
     sorted_by_ts = sorted(all_kpis, key=lambda k: k['timestamp'], reverse=True)
 
     # add the last 30 minutes
-    same_hour = [sorted_by_ts[:common.PERIODS_IN_HOUR / 2]]
+    same_hour = sorted_by_ts[:common.PERIODS_IN_HOUR / 2]
     sorted_by_ts = sorted_by_ts[common.PERIODS_IN_HOUR / 2:]
 
     while len(sorted_by_ts) > common.PERIODS_IN_DAY:
         sorted_by_ts = sorted_by_ts[common.PERIODS_IN_DAY - common.PERIODS_IN_HOUR:]
 
-        same_hour.append(sorted_by_ts[:common.PERIODS_IN_HOUR])
+        same_hour += sorted_by_ts[:common.PERIODS_IN_HOUR]
         sorted_by_ts = sorted_by_ts[common.PERIODS_IN_HOUR:]
 
     return pd.DataFrame(same_hour)
