@@ -178,19 +178,23 @@ def get_sessions_kpi():
 
 
 def get_kpis(collection):
-    all_kpis = list(g_db[collection].find({}, {'_id': 0}))
-    sorted_by_ts = sorted(all_kpis, key=lambda k: k['timestamp'], reverse=True)
+    # get sorted by timestamp from mongo
+    all_kpis = list(g_db[collection].find({}, {'_id': 0}).sort("timestamp", pymongo.DESCENDING))
 
     # add the last 30 minutes
-    same_hour = sorted_by_ts[:common.PERIODS_IN_HOUR / 2]
-    sorted_by_ts = sorted_by_ts[common.PERIODS_IN_HOUR / 2:]
+    same_hour = all_kpis[:common.PERIODS_IN_HOUR / 2]
+    all_kpis = all_kpis[common.PERIODS_IN_HOUR / 2:]
 
-    while len(sorted_by_ts) > common.PERIODS_IN_DAY:
-        sorted_by_ts = sorted_by_ts[common.PERIODS_IN_DAY - common.PERIODS_IN_HOUR:]
+    # While there is still a 1 day of data extract the same hour from prev day
+    while len(all_kpis) > common.PERIODS_IN_DAY:
+        # remove 23 irrelevant hours
+        all_kpis = all_kpis[common.PERIODS_IN_DAY - common.PERIODS_IN_HOUR:]
 
-        same_hour += sorted_by_ts[:common.PERIODS_IN_HOUR]
-        sorted_by_ts = sorted_by_ts[common.PERIODS_IN_HOUR:]
+        # add the same relevant hour
+        same_hour += all_kpis[:common.PERIODS_IN_HOUR]
+        all_kpis = all_kpis[common.PERIODS_IN_HOUR:]
 
+    # return as dataframe
     return pd.DataFrame(same_hour)
 
 
