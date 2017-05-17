@@ -225,6 +225,9 @@ def build_models():
 
 
 def check_tor_prob(sessions_kpis, suspected_sessions):
+    min_not_tor_epsilon = 1000000
+    max_tor_epsilon = -1000000
+
     for session, kpi in sessions_kpis.iteritems():
         # Check heuristics
         """
@@ -258,11 +261,20 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
             continue
 
         # Check probability
-        if sessions_model.pdf(kpi) > SESSIONS_EPSILON:
-            suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
+        kpi_prob = sessions_model.pdf(kpi)
+
+        if kpi_prob > SESSIONS_EPSILON:
+            if kpi_prob < min_not_tor_epsilon:
+                min_not_tor_epsilon = kpi_prob
+            # suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
             continue
 
+        # update_epsilons
+        if kpi_prob > max_tor_epsilon:
+            max_tor_epsilon = kpi_prob
         dal.alert(session, sessions_model.pdf(kpi))
+
+    return (min_not_tor_epsilon + max_tor_epsilon) / 2
 
 
 def check_ddos_prob():
@@ -291,9 +303,10 @@ def check_ddos_prob():
 
 
 def check_batch_probability():
+    global SESSIONS_EPSILON
     sessions_kpis = dal.get_sessions_kpi()
 
-    check_tor_prob(sessions_kpis, dal.get_all_sessions())
+    SESSIONS_EPSILON = check_tor_prob(sessions_kpis, dal.get_all_sessions())
     # check_ddos_prob()
 
 
