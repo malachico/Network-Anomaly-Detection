@@ -181,20 +181,14 @@ def get_kpis(collection):
     # get sorted by timestamp from mongo
     all_kpis = list(g_db[collection].find({}, {'_id': 0}).sort("timestamp", pymongo.DESCENDING))
 
-    # add the last 30 minutes
-    same_hour = all_kpis[:common.PERIODS_IN_HOUR / 2]
-    all_kpis = all_kpis[common.PERIODS_IN_HOUR / 2:]
+    current_ts = all_kpis[0]['timestamp']
+    same_hour = []
 
-    # While there is still a 1 day of data extract the same hour from prev day
-    while len(all_kpis) > common.PERIODS_IN_DAY:
-        # remove 23 irrelevant hours
-        all_kpis = all_kpis[common.PERIODS_IN_DAY - common.PERIODS_IN_HOUR:]
+    for i in range(30):
+        current_ts -= common.seconds_in_day
+        same_hour += filter(lambda x: current_ts + common.seconds_in_hour > x['timestamp'] > current_ts, all_kpis)
+        all_kpis = filter(lambda x: x['timestamp'] < current_ts, all_kpis)
 
-        # add the same relevant hour
-        same_hour += all_kpis[:common.PERIODS_IN_HOUR]
-        all_kpis = all_kpis[common.PERIODS_IN_HOUR:]
-
-    # return as dataframe
     return pd.DataFrame(same_hour)
 
 

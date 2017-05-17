@@ -50,6 +50,10 @@ NUMBER_OF_BATCHES_TO_REMEMBER = None
 
 SESSIONS_EPSILON = 2.09003339968e-11
 
+seconds_in_hour = 60 * 60
+
+seconds_in_day = seconds_in_hour * 24
+
 
 def internal_traffic(ip_frame):
     src_ip = socket.inet_ntoa(ip_frame.src)
