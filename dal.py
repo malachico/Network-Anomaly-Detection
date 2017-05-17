@@ -98,6 +98,9 @@ def remove_old_sessions_and_extract_kpis(timestamp):
 
     # Get sessions which ended during the batch
     ended_sessions = filter(lambda s: timestamp - s['timestamp'] > common.ENDED_SESSION_TIME, all_sessions)
+    if not ended_sessions:
+    	return
+    g_db['ended_sessions'].insert_many(ended_sessions)
 
     # Get the ended sessions from inside the network
     ended_io_sessions = filter(lambda s: IP(s['dest_ip']).iptype() == 'PUBLIC', ended_sessions)

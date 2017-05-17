@@ -41,7 +41,7 @@ WHITELIST_TIME = 60 * 60
 # Number of required batches before checking the traffic
 TIME_TO_PARAMETERIZE = 0  # 5 * 60  # 1 Day
 
-GATHERING_TIME = 24 * 60 * 60 * 14  # 2 weeks
+GATHERING_TIME = 24 * 60 * 60 * 14 * 100 # 2 weeks
 
 # Days backwards to remember batches
 DAYS_REMEMBER = 30
