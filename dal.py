@@ -267,3 +267,21 @@ def get_all_sessions():
 def get_all_kpis():
     kpi_dicts = list(g_db.batches_kpis.find({}, {'_id': 0}))
     return {k: v for kpi_dict in kpi_dicts for k, v in kpi_dict.items()}
+
+
+# ------------------------------------ Nodes list handling
+def write_nodes(tor_nodes, last_update_time):
+    # Write IPs to list
+    g_db['blacklist'].insert_many([{'ip': ip} for ip in tor_nodes])
+
+    # Update last refreshed time
+    g_db['blacklist'].update({'last_update_time': {'$exists': True}}, {'last_update_time': last_update_time},
+                         upsert=True)
+
+
+def get_blacklist():
+    return list(g_db['blacklist'].find({}, {'_id': 0}))
+
+
+def get_blacklist_ts():
+    return g_db['nodes'].find_one({'last_update_time': {'$exists': True}})

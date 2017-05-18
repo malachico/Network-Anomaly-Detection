@@ -5,6 +5,7 @@ import numpy
 from IPy import IP
 from scipy.stats import multivariate_normal
 
+import blacklist
 import dal
 import whitelist
 
@@ -312,3 +313,13 @@ def check_batch_probability():
 
 def preprocess_batch():
     whitelist.check_for_teamviewer()
+
+
+def check_blacklist():
+    ls = dal.get_blacklist()
+    if not ls:
+        blacklist.refresh_blacklist_db()
+
+    # else if the time since the last update is greater that defined refresh list - refresh the nodes list
+    elif blacklist.time_to_refresh():
+        blacklist.refresh_blacklist_db()
