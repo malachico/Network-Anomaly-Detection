@@ -323,3 +323,5 @@ def check_blacklist():
     # else if the time since the last update is greater that defined refresh list - refresh the nodes list
     elif blacklist.time_to_refresh():
         blacklist.refresh_blacklist_db()
+
+    blacklist.is_tor_ip_in_batch(current_batch)

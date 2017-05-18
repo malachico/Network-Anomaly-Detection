@@ -47,3 +47,7 @@ def time_to_refresh():
     """
     return time.time() - dal.get_blacklist_ts() > TIME_TO_REFRESH
 
+
+def is_tor_ip_in_batch(batch):
+
+    return True
