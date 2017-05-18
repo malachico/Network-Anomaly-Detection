@@ -19,7 +19,6 @@ class DetectingState(State):
         common.add_packet_to_batch(timestamp, ip_frame)
 
         if common.is_batch_time_over(timestamp):
-            common.update_epsilon()
             common.preprocess_batch()
             common.extract_kpis(timestamp)
             common.check_batch_probability()
