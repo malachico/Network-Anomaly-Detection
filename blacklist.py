@@ -27,17 +27,18 @@ def refresh_blacklist_db():
     dal.write_nodes(nodes, g_last_time_refreshed)
 
 
-def check_nodes(session):
+def check_nodes(session, tor_ips):
     """
 
-    :param session:
+    :param tor_ips: Known ToR IPs found in DB
+    :param session: Session to check
     :return: True if one of the IPs is in the nodes list and print and alert
     """
-    if session['src_ip'] in dal.get_blacklist():
+    if session['src_ip'] in tor_ips:
         dal.alert(session, 1)
         return True
 
-    if session['dest_ip'] in dal.get_blacklist():
+    if session['dest_ip'] in tor_ips:
         dal.alert(session, 1)
         return True
 

@@ -4,7 +4,7 @@ import dpkt
 import numpy
 from IPy import IP
 from scipy.stats import multivariate_normal
-
+import sys
 import blacklist
 import dal
 import whitelist
@@ -226,8 +226,10 @@ def build_models():
 
 
 def check_tor_prob(sessions_kpis, suspected_sessions):
-    min_not_tor_epsilon = 1000000
-    max_tor_epsilon = -1000000
+    min_not_tor_epsilon = sys.maxint
+    max_tor_epsilon = -sys.maxint - 1
+
+    tor_ips = dal.get_blacklist()
 
     for session, kpi in sessions_kpis.iteritems():
         # Check heuristics
@@ -239,7 +241,7 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
         """
         session = dict(session)
         # Check blacklist
-        if blacklist.check_nodes(session):
+        if blacklist.check_nodes(session, tor_ips):
             continue
 
         # Check the stats are above average
