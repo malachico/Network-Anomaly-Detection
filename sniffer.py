@@ -88,6 +88,10 @@ if __name__ == '__main__':
     # Init DB
     dal.init_db()
 
+    if True:
+        import common
+        common.check_blacklist()
+        exit()
     # get mode : pcap file reader or sniffing
     mode = sys.argv[1]
 

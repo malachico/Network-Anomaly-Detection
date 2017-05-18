@@ -271,12 +271,15 @@ def get_all_kpis():
 
 # ------------------------------------ Nodes list handling
 def write_nodes(tor_nodes, last_update_time):
+    # Drop old nodes
+    g_db['blacklist'].drop()
+
     # Write IPs to list
     g_db['blacklist'].insert_many([{'ip': ip} for ip in tor_nodes])
 
     # Update last refreshed time
-    g_db['blacklist'].update({'last_update_time': {'$exists': True}}, {'last_update_time': last_update_time},
-                         upsert=True)
+    g_db['configs'].update({'last_update_time': {'$exists': True}}, {'last_update_time': last_update_time},
+                           upsert=True)
 
 
 def get_blacklist():
@@ -284,4 +287,4 @@ def get_blacklist():
 
 
 def get_blacklist_ts():
-    return g_db['nodes'].find_one({'last_update_time': {'$exists': True}})
+    return g_db['configs'].find_one({'last_update_time': {'$exists': True}})['last_update_time']
