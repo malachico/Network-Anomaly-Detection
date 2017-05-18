@@ -219,7 +219,6 @@ def build_models():
     kpis = dal.get_kpis('sessions_kpis')
 
     kpis = kpis.applymap(lambda x: safe_log(x))
-    print kpis.cov()
     sessions_model = multivariate_normal(mean=kpis.mean(), cov=kpis.cov())
 
     # Build batches model
