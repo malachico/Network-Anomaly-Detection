@@ -193,8 +193,10 @@ def get_kpis(collection):
         current_ts -= common.seconds_in_day
         same_hour += filter(lambda x: current_ts + common.seconds_in_hour > x['timestamp'] > current_ts, all_kpis)
         all_kpis = filter(lambda x: x['timestamp'] < current_ts, all_kpis)
-
-    return pd.DataFrame(same_hour)
+ 
+    df = pd.DataFrame(same_hour)
+    del df['timestamp']
+    return df
 
 
 # ################## Alert methods ################## #

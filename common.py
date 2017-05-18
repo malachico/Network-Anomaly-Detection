@@ -40,7 +40,7 @@ WHITELIST_TIME = 60 * 60
 # Number of required batches before checking the traffic
 TIME_TO_PARAMETERIZE = 0#24 * 60 * 60  # 1 Day
 
-GATHERING_TIME = 60*60#24 * 60 * 60 * 14  # 2 weeks
+GATHERING_TIME = 0# 60*60#24 * 60 * 60 * 14  # 2 weeks
 
 # Days backwards to remember batches
 DAYS_REMEMBER = 30
@@ -101,7 +101,7 @@ def parameterize(duration):
     global BATCH_PERIOD, PERIODS_IN_HOUR, PERIODS_IN_DAY, NUMBER_OF_BATCHES_TO_REMEMBER, packets_counter
 
     # Average time for 5000 packets to arrive
-    BATCH_PERIOD = (duration / float(packets_counter)) * 5000.0
+    BATCH_PERIOD = 15#(duration / float(packets_counter)) * 5000.0
 
     print "BATCH_PERIOD : ", BATCH_PERIOD
 
@@ -219,7 +219,7 @@ def build_models():
     kpis = dal.get_kpis('sessions_kpis')
 
     kpis = kpis.applymap(lambda x: safe_log(x))
-
+    print kpis.cov()
     sessions_model = multivariate_normal(mean=kpis.mean(), cov=kpis.cov())
 
     # Build batches model
