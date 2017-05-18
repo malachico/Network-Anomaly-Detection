@@ -283,7 +283,8 @@ def write_nodes(tor_nodes, last_update_time):
 
 
 def get_blacklist():
-    return list(g_db['blacklist'].find({}, {'_id': 0}))
+    dicts = list(g_db['blacklist'].find({}, {'_id': 0}))
+    return set(map(lambda d: d['ip'], dicts))
 
 
 def get_blacklist_ts():

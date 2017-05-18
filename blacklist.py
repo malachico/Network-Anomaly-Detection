@@ -4,8 +4,8 @@ import urllib2
 import dal
 
 TIME_TO_REFRESH = 30 * 60  # half an hour
-# nodes_url = "https://www.dan.me.uk/torlist/"
-nodes_url = 'https://s3.amazonaws.com/lists.disconnect.me/simple_ad.txt'
+nodes_url = "https://www.dan.me.uk/torlist/"
+# nodes_url = 'https://s3.amazonaws.com/lists.disconnect.me/simple_ad.txt'  # for debugging
 
 
 # -------------------------------- functions
@@ -35,9 +35,13 @@ def check_nodes(session):
     """
     if session['src_ip'] in dal.get_blacklist():
         dal.alert(session, 1)
+        return True
 
     if session['dest_ip'] in dal.get_blacklist():
         dal.alert(session, 1)
+        return True
+
+    return False
 
 
 def time_to_refresh():
@@ -46,8 +50,3 @@ def time_to_refresh():
     :return: True if it has been long since last update
     """
     return time.time() - dal.get_blacklist_ts() > TIME_TO_REFRESH
-
-
-def is_tor_ip_in_batch(batch):
-
-    return True

@@ -238,6 +238,9 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
 
         """
         session = dict(session)
+        # Check blacklist
+        if blacklist.check_nodes(session):
+            continue
 
         # Check the stats are above average
         if kpi[0] > sessions_model.mean[0]:  # num_of_sessions_io_avg
@@ -273,6 +276,7 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
         # update_epsilons
         if kpi_prob > max_tor_epsilon:
             max_tor_epsilon = kpi_prob
+
         dal.alert(session, sessions_model.pdf(kpi))
 
     return (min_not_tor_epsilon + max_tor_epsilon) / 2
@@ -323,5 +327,3 @@ def check_blacklist():
     # else if the time since the last update is greater that defined refresh list - refresh the nodes list
     elif blacklist.time_to_refresh():
         blacklist.refresh_blacklist_db()
-
-    blacklist.is_tor_ip_in_batch(current_batch)
