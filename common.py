@@ -321,7 +321,7 @@ def preprocess_batch():
     whitelist.check_for_teamviewer()
 
 
-def check_blacklist():
+def update_blacklist():
     ls = dal.get_blacklist()
     if not ls:
         blacklist.refresh_blacklist_db()
