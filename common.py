@@ -308,8 +308,12 @@ def check_ddos_prob():
 def check_batch_probability():
     global SESSIONS_EPSILON
     sessions_kpis = dal.get_sessions_kpi()
-    dal.insert_epsilon(batch_start_time, SESSIONS_EPSILON)
-    SESSIONS_EPSILON = check_tor_prob(sessions_kpis, dal.get_all_sessions())
+    epsilon = check_tor_prob(sessions_kpis, dal.get_all_sessions())
+
+    if epsilon != SESSIONS_EPSILON:
+        dal.insert_epsilon(batch_start_time, SESSIONS_EPSILON)
+        SESSIONS_EPSILON = epsilon
+
     # check_ddos_prob()
 
 
