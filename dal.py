@@ -193,7 +193,7 @@ def get_kpis(collection):
         current_ts -= common.seconds_in_day
         same_hour += filter(lambda x: current_ts + common.seconds_in_hour > x['timestamp'] > current_ts, all_kpis)
         all_kpis = filter(lambda x: x['timestamp'] < current_ts, all_kpis)
- 
+
     df = pd.DataFrame(same_hour)
     del df['timestamp']
     return df
@@ -274,3 +274,8 @@ def insert_prob(session, kpi, kpi_prob):
     g_db['probs'].insert({'session': session,
                           'kpi': kpi,
                           'prob': kpi_prob})
+
+
+def insert_epsilon(timestamp, epsilon):
+    g_db['epsilons'].insert({'timestamp': timestamp,
+                             'epsilon': epsilon})

@@ -228,8 +228,8 @@ def build_models():
 
 
 def check_tor_prob(sessions_kpis, suspected_sessions):
-    min_not_tor_epsilon = 1000000
-    max_tor_epsilon = -1000000
+    min_not_tor_epsilon = SESSIONS_EPSILON
+    max_tor_epsilon = SESSIONS_EPSILON
 
     for session, kpi in sessions_kpis.iteritems():
         # Check heuristics
@@ -309,7 +309,7 @@ def check_ddos_prob():
 def check_batch_probability():
     global SESSIONS_EPSILON
     sessions_kpis = dal.get_sessions_kpi()
-
+    dal.insert_epsilon(batch_start_time, SESSIONS_EPSILON)
     SESSIONS_EPSILON = check_tor_prob(sessions_kpis, dal.get_all_sessions())
     # check_ddos_prob()
 
