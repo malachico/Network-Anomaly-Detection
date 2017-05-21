@@ -48,7 +48,7 @@ DAYS_REMEMBER = 30
 # Number of batches to remember
 NUMBER_OF_BATCHES_TO_REMEMBER = None
 
-SESSIONS_EPSILON = 2.09003339968e-11
+SESSIONS_EPSILON = min_not_tor_epsilon = max_tor_epsilon = 2.09003339968e-11
 
 seconds_in_hour = 60 * 60
 
@@ -228,8 +228,7 @@ def build_models():
 
 
 def check_tor_prob(sessions_kpis, suspected_sessions):
-    min_not_tor_epsilon = SESSIONS_EPSILON
-    max_tor_epsilon = SESSIONS_EPSILON
+    global min_not_tor_epsilon, max_tor_epsilon
 
     for session, kpi in sessions_kpis.iteritems():
         # Check heuristics
@@ -243,6 +242,13 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
 
         # Check probability
         kpi_prob = sessions_model.pdf(kpi)
+
+        # update_epsilons
+        if kpi_prob > SESSIONS_EPSILON:
+            min_not_tor_epsilon = min(kpi_prob, min_not_tor_epsilon)
+            continue
+
+        max_tor_epsilon = max(kpi_prob, max_tor_epsilon)
 
         dal.insert_prob(session, kpi, kpi_prob)
 
@@ -267,13 +273,6 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
                       suspected_sessions)) > 1:
             suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
             continue
-
-        # update_epsilons
-        if kpi_prob > SESSIONS_EPSILON:
-            min_not_tor_epsilon = min(kpi_prob, min_not_tor_epsilon)
-            continue
-
-        max_tor_epsilon = max(kpi_prob, max_tor_epsilon)
 
         # Alert if found
         dal.alert(session, sessions_model.pdf(kpi))
