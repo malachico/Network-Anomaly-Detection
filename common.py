@@ -241,6 +241,11 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
         """
         session = dict(session)
 
+        # Check probability
+        kpi_prob = sessions_model.pdf(kpi)
+
+        dal.insert_prob(session, kpi, kpi_prob)
+
         # Check the stats are above average
         if kpi[0] > sessions_model.mean[0]:  # num_of_sessions_io_avg
             continue
@@ -263,18 +268,14 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
             suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
             continue
 
-        # Check probability
-        kpi_prob = sessions_model.pdf(kpi)
-
+        # update_epsilons
         if kpi_prob > SESSIONS_EPSILON:
-            if kpi_prob < min_not_tor_epsilon:
-                min_not_tor_epsilon = kpi_prob
-            # suspected_sessions = filter(lambda s: s['dest_ip'] != session['dest_ip'], suspected_sessions)
+            min_not_tor_epsilon = min(kpi_prob, min_not_tor_epsilon)
             continue
 
-        # update_epsilons
-        if kpi_prob > max_tor_epsilon:
-            max_tor_epsilon = kpi_prob
+        max_tor_epsilon = max(kpi_prob, max_tor_epsilon)
+
+        # Alert if found
         dal.alert(session, sessions_model.pdf(kpi))
 
     return (min_not_tor_epsilon + max_tor_epsilon) / 2

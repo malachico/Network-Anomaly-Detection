@@ -268,3 +268,9 @@ def get_all_sessions():
 def get_all_kpis():
     kpi_dicts = list(g_db.batches_kpis.find({}, {'_id': 0}))
     return {k: v for kpi_dict in kpi_dicts for k, v in kpi_dict.items()}
+
+
+def insert_prob(session, kpi, kpi_prob):
+    g_db['probs'].insert({'session': session,
+                          'kpi': kpi,
+                          'prob': kpi_prob})
