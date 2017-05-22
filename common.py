@@ -217,20 +217,23 @@ def build_models():
 
     # Build sessions model
     kpis = dal.get_kpis('sessions_kpis')
-
+    del kpis['num_of_sessions_io_avg']
     kpis = kpis.applymap(lambda x: safe_log(x))
     sessions_model = multivariate_normal(mean=kpis.mean(), cov=kpis.cov())
 
-    # Build batches model
-    kpis = dal.get_kpis('batches_kpis')
-
-    batches_model = multivariate_normal(mean=kpis.mean(), cov=kpis.cov())
+    # # Build batches model
+    # kpis = dal.get_kpis('batches_kpis')
+    #
+    # batches_model = multivariate_normal(mean=kpis.mean(), cov=kpis.cov())
 
 
 def check_tor_prob(sessions_kpis, suspected_sessions):
     global min_not_tor_epsilon, max_tor_epsilon
 
     for session, kpi in sessions_kpis.iteritems():
+        # remove io sessions
+        kpi = kpi[1:]
+
         # Check heuristics
         """
         1. heuristic:	If ToR (destination) has only 1 session
@@ -253,13 +256,10 @@ def check_tor_prob(sessions_kpis, suspected_sessions):
         dal.insert_prob(session, kpi, kpi_prob)
 
         # Check the stats are above average
-        if kpi[0] > sessions_model.mean[0]:  # num_of_sessions_io_avg
+        if kpi[0] < sessions_model.mean[0]:  # sessions_bandwidths
             continue
 
-        if kpi[1] < sessions_model.mean[1]:  # sessions_bandwidths
-            continue
-
-        if kpi[2] < sessions_model.mean[2]:  # sessions_durations
+        if kpi[1] < sessions_model.mean[1]:  # sessions_durations
             continue
 
         # 1. heuristic:	If ToR (destination) has only 1 session
